@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background: #020617;
+    color: #e2e8f0;
+  }
+}
+
+input[type='search']::-webkit-search-cancel-button {
+  cursor: pointer;
+}
