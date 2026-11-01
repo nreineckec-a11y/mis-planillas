@@ -2,7 +2,7 @@ import { readWorkbook, XlsxError, type Workbook } from './xlsx/reader'
 import { findTable, isTable, sheetByName, sheetsByPrefix } from './table'
 import { HOJA_DETALLE, PREFIJO_TRABAJO, parseCuentas } from './cuentas/parse'
 import { COLS_DESCUENTOS, HOJA_POR_DIA, parseDescuentos } from './descuentos/parse'
-import { SCHEMA, type Advertencia, type Registro, type Tipo } from './model'
+import { PARSER, SCHEMA, type Advertencia, type Registro, type Tipo } from './model'
 
 export type Deteccion = { tipo: Tipo } | { error: string }
 
@@ -39,7 +39,7 @@ export function importarLibro(archivo: string, data: ArrayBuffer | Uint8Array, a
   }
   const det = detectarTipo(wb)
   if ('error' in det) return { ok: false, archivo, error: det.error }
-  const base = { schema: SCHEMA, archivo, fechaCarga: ahora.toISOString() }
+  const base = { schema: SCHEMA, parser: PARSER, archivo, fechaCarga: ahora.toISOString() }
   try {
     if (det.tipo === 'cuentas') {
       const r = parseCuentas(wb)
@@ -54,6 +54,11 @@ export function importarLibro(archivo: string, data: ArrayBuffer | Uint8Array, a
 
 export function resumenAdvertencias(adv: Advertencia[]): string {
   return adv.length === 1 ? '1 advertencia' : `${adv.length} advertencias`
+}
+
+/** ¿El registro se leyó con una versión anterior del parser o del formato? */
+export function desactualizado(r: Registro): boolean {
+  return r.schema !== SCHEMA || (r.parser ?? 1) < PARSER
 }
 
 /** Completa campos agregados en versiones nuevas para registros guardados con una versión anterior. */

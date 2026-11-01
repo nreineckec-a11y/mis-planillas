@@ -31,7 +31,19 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 
 export const guardar = (r: Registro) => tx('readwrite', (s) => s.put(r, r.tipo))
 export const leer = (tipo: Tipo) => tx<Registro | undefined>('readonly', (s) => s.get(tipo))
-export const borrar = (tipo: Tipo) => tx('readwrite', (s) => s.delete(tipo))
+export const borrar = async (tipo: Tipo) => {
+  await tx('readwrite', (s) => s.delete(tipo))
+  await tx('readwrite', (s) => s.delete(`archivo-${tipo}`))
+}
+
+/** Copia del Excel original, para volver a leerlo cuando la app aprenda a leer algo nuevo. */
+export interface ArchivoGuardado {
+  archivo: string
+  fechaCarga: string
+  datos: ArrayBuffer
+}
+export const guardarArchivo = (tipo: Tipo, a: ArchivoGuardado) => tx('readwrite', (s) => s.put(a, `archivo-${tipo}`))
+export const leerArchivo = (tipo: Tipo) => tx<ArchivoGuardado | undefined>('readonly', (s) => s.get(`archivo-${tipo}`))
 
 // Cambios hechos en la app (turnos agregados, marcas de pago): sobreviven a cargar un Excel nuevo.
 const CLAVE_CAMBIOS = 'cambios-trabajo'

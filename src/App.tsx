@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Sheet, cx } from './components/ui'
+import { BotonCargar, Sheet, cx } from './components/ui'
 import { resumenAdvertencias } from './lib/importar'
 import { useDatos } from './state'
 import Ajustes, { ListaAdvertencias } from './views/Ajustes'
@@ -34,6 +34,7 @@ export default function App() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
+      <AvisoActualizar />
       <main>
         {tab === 'descuentos' && <Descuentos />}
         {tab === 'personas' && <Personas />}
@@ -68,6 +69,22 @@ export default function App() {
 }
 
 const NOMBRE_TIPO = { cuentas: 'Cuentas por cobrar', descuentos: 'Descuentos' }
+
+/** Datos guardados por una versión anterior que no se pudieron releer solos. */
+function AvisoActualizar() {
+  const { obsoletos } = useDatos()
+  if (obsoletos.length === 0) return null
+  const cuales = obsoletos.map((t) => (t === 'descuentos' ? 'descuentos' : 'cuentas')).join(' y de ')
+  return (
+    <div role="status" className="mx-4 mt-[calc(env(safe-area-inset-top)+0.75rem)] rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+      <p>
+        <b>La app se actualizó.</b> Vuelve a cargar tu Excel de {cuales} para ver las novedades (por ejemplo, los tipos de comida). Es solo esta vez: desde
+        ahora se actualizará solo.
+      </p>
+      <BotonCargar className="mt-2 w-full" />
+    </div>
+  )
+}
 
 function ResultadoImportacion() {
   const { ultimaImportacion, cerrarImportacion } = useDatos()

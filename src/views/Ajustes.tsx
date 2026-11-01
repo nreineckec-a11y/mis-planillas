@@ -26,7 +26,7 @@ function Bloque({ tipo, r, obsoleto }: { tipo: Tipo; r?: Registro; obsoleto: boo
   return (
     <Card className="mt-3">
       <h2 className="font-semibold">{NOMBRE[tipo]}</h2>
-      {obsoleto && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">La app se actualizó: vuelve a cargar este Excel.</p>}
+      {obsoleto && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">La app se actualizó: vuelve a cargar este Excel una vez para ver las novedades.</p>}
       {r ? (
         <>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
@@ -102,7 +102,11 @@ export default function Ajustes() {
             {persistido === true ? 'concedido ✓' : persistido === false ? 'no concedido (el sistema podría borrar los datos si falta espacio)' : 'se pedirá al cargar un Excel'}
           </p>
         </Card>
-        <p className="mt-4 text-center text-xs text-slate-400">Mis Planillas · versión {__APP_VERSION__}</p>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Mis Planillas · versión {__APP_VERSION__}
+          <br />
+          Si el teléfono muestra una versión distinta a la del computador, cierra la app por completo y vuelve a abrirla con conexión.
+        </p>
       </div>
     </>
   )

@@ -147,7 +147,7 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
           type="search"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Comercio, comuna o tipo (ej: pizza)"
+          placeholder="Comercio, comuna o tipo"
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-base dark:border-slate-700 dark:bg-slate-900"
         />
         <Chip active={nFiltros > 0} onClick={() => setAbrirFiltros(true)}>

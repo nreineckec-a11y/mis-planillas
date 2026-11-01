@@ -29,7 +29,8 @@ function csp(): Plugin {
 }
 
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 10)) },
+  // Fecha y hora (UTC) del build: permite comparar la versión del teléfono con la del computador.
+  define: { __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   // En GitHub Pages la app vive en /<repo>/ (lo define el workflow).
   base: process.env.BASE_PATH ?? '/',
   plugins: [
@@ -38,7 +39,7 @@ export default defineConfig({
     csp(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'script',
+      injectRegister: false,
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Mis Planillas',

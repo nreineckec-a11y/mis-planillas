@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { importarLibro, normalizarRegistro, type ResultadoImportacion } from './lib/importar'
+import { desactualizado, importarLibro, normalizarRegistro, type ResultadoImportacion } from './lib/importar'
 import { SCHEMA, type Registro, type RegistroCuentas, type RegistroDescuentos, type Tipo } from './lib/model'
 import * as storage from './lib/storage'
 import { reconciliar, SIN_CAMBIOS, type CambiosTrabajo } from './lib/cuentas/cambios'
@@ -8,7 +8,7 @@ interface Estado {
   cargando: boolean
   cuentas?: RegistroCuentas
   descuentos?: RegistroDescuentos
-  /** Tipos guardados con un formato antiguo: hay que volver a cargar el Excel. */
+  /** Datos leídos con una versión anterior y sin copia del Excel para releerlos: hay que volver a cargarlo. */
   obsoletos: Tipo[]
   persistido: boolean | null
   ultimaImportacion: ResultadoImportacion[] | null
@@ -53,8 +53,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
         try {
           const r = await storage.leer(tipo)
           if (!r) continue
-          if (r.schema !== SCHEMA) viejos.push(tipo)
-          else aplicar(normalizarRegistro(r))
+          if (!desactualizado(r)) {
+            aplicar(r)
+            continue
+          }
+          // La app se actualizó: se vuelve a leer el Excel guardado con el parser nuevo.
+          const original = await storage.leerArchivo(tipo).catch(() => undefined)
+          const re = original ? importarLibro(original.archivo, original.datos) : null
+          if (re?.ok && re.registro.tipo === tipo) {
+            const registro = { ...re.registro, fechaCarga: original!.fechaCarga }
+            await storage.guardar(registro)
+            aplicar(registro)
+          } else {
+            viejos.push(tipo)
+            if (r.schema === SCHEMA) aplicar(normalizarRegistro(r))
+          }
         } catch {
           /* IndexedDB no disponible: la app parte vacía */
         }
@@ -77,10 +90,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setImportando(true)
       const resultados: ResultadoImportacion[] = []
       for (const file of Array.from(files)) {
-        const r = importarLibro(file.name, await file.arrayBuffer())
+        const bytes = await file.arrayBuffer()
+        const r = importarLibro(file.name, bytes)
         if (r.ok) {
           try {
             await storage.guardar(r.registro)
+            await storage.guardarArchivo(r.registro.tipo, { archivo: file.name, fechaCarga: r.registro.fechaCarga, datos: bytes })
           } catch {
             resultados.push({ ok: false, archivo: file.name, error: 'Se leyó, pero no se pudo guardar en el teléfono (¿almacenamiento lleno o modo privado?).' })
             aplicar(r.registro)

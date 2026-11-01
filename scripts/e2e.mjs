@@ -138,6 +138,45 @@ try {
       await page.getByText('Ana Ficticia').waitFor({ timeout: 5000 })
       await shot('12-sin-conexion')
       await ctx.setOffline(false)
+
+      // Datos guardados por una versión anterior (sin "tipo" ni versión de parser).
+      const envejecer = (borrarOriginal) =>
+        page.evaluate(
+          (borrarOriginal) =>
+            new Promise((ok, mal) => {
+              const req = indexedDB.open('mis-planillas', 1)
+              req.onsuccess = () => {
+                const t = req.result.transaction('registros', 'readwrite')
+                const st = t.objectStore('registros')
+                const g = st.get('descuentos')
+                g.onsuccess = () => {
+                  const r = g.result
+                  delete r.parser
+                  r.datos.items.forEach((d) => delete d.tipo)
+                  st.put(r, 'descuentos')
+                  if (borrarOriginal) st.delete('archivo-descuentos')
+                }
+                t.oncomplete = () => ok()
+                t.onerror = () => mal(t.error)
+              }
+            }),
+          borrarOriginal,
+        )
+      // a) Con la copia del Excel guardada: se relee solo y aparecen los tipos.
+      await envejecer(false)
+      await page.goto(`${ORIGEN}/#/descuentos`)
+      await page.reload()
+      await page.getByRole('group', { name: 'Tipo de comida' }).waitFor({ timeout: 5000 })
+      if (await page.getByText('La app se actualizó.').count()) errores.push('aviso de actualizar visible aunque se pudo releer')
+      // b) Sin copia (datos de la versión anterior): aviso para cargar el Excel una vez.
+      await envejecer(true)
+      await page.reload()
+      await page.getByText('La app se actualizó.').waitFor({ timeout: 5000 })
+      await shot('18-aviso-actualizar')
+      await page.locator('input[type=file]').first().setInputFiles(['tests/fixtures/descuentos.xlsx'])
+      await page.getByRole('button', { name: 'Listo' }).click()
+      await page.getByRole('group', { name: 'Tipo de comida' }).waitFor({ timeout: 5000 })
+      if (await page.getByText('La app se actualizó.').count()) errores.push('el aviso no desapareció tras cargar el Excel')
     }
     await ctx.close()
   }
