@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { importarLibro } from '../src/lib/importar'
+import { desactualizado, importarLibro } from '../src/lib/importar'
 import { fromExcelSerial, parseDateValue, weekday } from '../src/lib/dates'
 import { clp, clpSigno, pct } from '../src/lib/format'
 import { toNumber, toFraction, toRecargo, norm } from '../src/lib/text'
@@ -65,5 +65,17 @@ describe('utilidades', () => {
     expect(parseDateValue('28-10-2026')).toEqual({ y: 2026, m: 10, d: 28 })
     expect(parseDateValue('2026-10-28T00:00:00')).toEqual({ y: 2026, m: 10, d: 28 })
     expect(weekday({ y: 2026, m: 10, d: 28 })).toBe(2) // miércoles
+  })
+})
+
+describe('versión de lectura por tipo de Excel', () => {
+  it('solo se considera desactualizado el Excel cuyo parser cambió', () => {
+    const c = importarLibro('c.xlsx', fixture('cuentas.xlsx'))
+    const d = importarLibro('d.xlsx', fixture('descuentos.xlsx'))
+    if (!c.ok || !d.ok) throw new Error('fixture')
+    // Guardados por una versión sin número de parser (= 1).
+    expect(desactualizado({ ...c.registro, parser: undefined })).toBe(false)
+    expect(desactualizado({ ...d.registro, parser: undefined })).toBe(true)
+    expect(desactualizado(d.registro)).toBe(false)
   })
 })

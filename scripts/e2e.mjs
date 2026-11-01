@@ -156,6 +156,13 @@ try {
                   st.put(r, 'descuentos')
                   if (borrarOriginal) st.delete('archivo-descuentos')
                 }
+                // Cuentas guardadas por la versión anterior: su lectura no cambió, no deben pedir recarga.
+                const gc = st.get('cuentas')
+                gc.onsuccess = () => {
+                  delete gc.result.parser
+                  st.put(gc.result, 'cuentas')
+                  st.delete('archivo-cuentas')
+                }
                 t.oncomplete = () => ok()
                 t.onerror = () => mal(t.error)
               }

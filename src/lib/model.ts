@@ -118,11 +118,12 @@ export interface DatosDescuentos {
 export const SCHEMA = 1
 
 /**
- * Versión de la lectura del Excel. Subirla cuando el parser aprenda a leer algo
- * nuevo (p. ej. 2 = "Tipo de restaurante"): al abrir la app, los Excel guardados
- * se vuelven a leer solos con la versión nueva.
+ * Versión de la lectura de cada Excel. Subir la del tipo cuyo parser aprenda a
+ * leer algo nuevo: al abrir la app, ese Excel se vuelve a leer solo desde la
+ * copia guardada. Solo se sube la del Excel afectado, para no pedir el otro.
+ * Descuentos 2 = "Tipo de restaurante".
  */
-export const PARSER = 2
+export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 2 }
 
 interface RegistroBase {
   schema: number

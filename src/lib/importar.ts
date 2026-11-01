@@ -39,7 +39,7 @@ export function importarLibro(archivo: string, data: ArrayBuffer | Uint8Array, a
   }
   const det = detectarTipo(wb)
   if ('error' in det) return { ok: false, archivo, error: det.error }
-  const base = { schema: SCHEMA, parser: PARSER, archivo, fechaCarga: ahora.toISOString() }
+  const base = { schema: SCHEMA, parser: PARSER[det.tipo], archivo, fechaCarga: ahora.toISOString() }
   try {
     if (det.tipo === 'cuentas') {
       const r = parseCuentas(wb)
@@ -58,7 +58,7 @@ export function resumenAdvertencias(adv: Advertencia[]): string {
 
 /** ¿El registro se leyó con una versión anterior del parser o del formato? */
 export function desactualizado(r: Registro): boolean {
-  return r.schema !== SCHEMA || (r.parser ?? 1) < PARSER
+  return r.schema !== SCHEMA || (r.parser ?? 1) < PARSER[r.tipo]
 }
 
 /** Completa campos agregados en versiones nuevas para registros guardados con una versión anterior. */
