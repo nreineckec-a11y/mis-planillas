@@ -27,7 +27,7 @@ export function detectarTipo(wb: Workbook): Deteccion {
 }
 
 export type ResultadoImportacion =
-  | { ok: true; archivo: string; registro: Registro }
+  | { ok: true; archivo: string; registro: Registro; notas?: string[] }
   | { ok: false; archivo: string; error: string }
 
 export function importarLibro(archivo: string, data: ArrayBuffer | Uint8Array, ahora = new Date()): ResultadoImportacion {
@@ -54,4 +54,10 @@ export function importarLibro(archivo: string, data: ArrayBuffer | Uint8Array, a
 
 export function resumenAdvertencias(adv: Advertencia[]): string {
   return adv.length === 1 ? '1 advertencia' : `${adv.length} advertencias`
+}
+
+/** Completa campos agregados en versiones nuevas para registros guardados con una versión anterior. */
+export function normalizarRegistro(r: Registro): Registro {
+  if (r.tipo !== 'descuentos') return r
+  return { ...r, datos: { ...r.datos, items: r.datos.items.map((d) => ({ ...d, tipo: d.tipo ?? '' })) } }
 }

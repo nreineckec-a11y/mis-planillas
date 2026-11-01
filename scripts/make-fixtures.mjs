@@ -131,6 +131,8 @@ async function descuentos() {
   pd.getRow(2).values = [
     'Día', 'Fecha específica', '% dcto.', 'Monto fijo', 'Tope ($)', 'Tipo de tope', 'Tarjeta', 'Comercio', 'Categoría',
     'Comuna / región', 'Zona', 'Canal', 'Tarjetas que aplican', 'Vigencia', 'Condiciones', 'Verificación', 'Fuente',
+    // Columna agregada después: queda al final para probar que se mapea por nombre.
+    'Tipo de restaurante',
   ]
   const link = (n) => ({ text: 'Ver ficha', hyperlink: `https://example.com/ficha/${n}` })
   const filas = [
@@ -148,6 +150,11 @@ async function descuentos() {
     ['Viernes', '', 0.15, null, null, '', 'Banco Gamma', 'Heladería Ficticia', 'Postres', 'Ñuñoa', 'RM / online', 'Presencial', 'Gamma Débito', 'Octubre', '', 'Pendiente', link(12)],
   ]
   filas.forEach((v) => pd.addRow(v))
+  // Tipo de restaurante (columna R): Restorán Uno = Italiano, Sushi Test = Sushi y nikkei, Pizzería Falsa = Pizzería.
+  ;['R3', 'R4', 'R5'].forEach((c) => (pd.getCell(c).value = 'Italiano'))
+  pd.getCell('R9').value = 'Sushi y nikkei'
+  pd.getCell('R13').value = 'Pizzería'
+  pd.getCell('R6').value = 'Por confirmar'
   // Fila de Pizzería: "Tarjetas que aplican" en amarillo ARGB; Heladería: "Verificación" amarillo de tema.
   pd.getCell('M13').fill = AMARILLO
   pd.getCell('P14').fill = AMARILLO_TEMA

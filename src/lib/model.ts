@@ -94,6 +94,8 @@ export interface Descuento {
   comercio: string
   categoria: string
   categoriaGrupo: string
+  /** "Tipo de restaurante" (Pizzería, Italiano…); '' si no viene. */
+  tipo: string
   comuna: string
   zona: string
   canal: string

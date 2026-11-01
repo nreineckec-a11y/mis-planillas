@@ -7,19 +7,25 @@ export interface Filtros {
   zonas: string[]
   canales: string[]
   categorias: string[]
+  tipos: string[]
   texto: string
 }
 
-export const FILTROS_VACIOS: Filtros = { tarjetas: [], zonas: [], canales: [], categorias: [], texto: '' }
+export const FILTROS_VACIOS: Filtros = { tarjetas: [], zonas: [], canales: [], categorias: [], tipos: [], texto: '' }
+
+/** Coincidencia de texto libre: comercio, comuna o tipo de comida (sin tildes ni mayúsculas). */
+export function calzaTexto(d: Descuento, texto: string): boolean {
+  const t = norm(texto)
+  return !t || norm(d.comercio).includes(t) || norm(d.comuna).includes(t) || norm(d.tipo).includes(t)
+}
 
 export function pasaFiltros(d: Descuento, f: Filtros): boolean {
   if (f.tarjetas.length && !f.tarjetas.includes(d.tarjeta)) return false
   if (f.zonas.length && !f.zonas.includes(d.zona)) return false
   if (f.canales.length && !f.canales.includes(d.canal)) return false
   if (f.categorias.length && !f.categorias.includes(d.categoriaGrupo)) return false
-  const t = norm(f.texto)
-  if (t && !norm(d.comercio).includes(t) && !norm(d.comuna).includes(t)) return false
-  return true
+  if (f.tipos.length && !f.tipos.includes(d.tipo)) return false
+  return calzaTexto(d, f.texto)
 }
 
 /** Tope para ordenar: sin tope declarado cuenta como el mejor. */
@@ -64,8 +70,9 @@ export function descuentosDelDia(items: Descuento[], fecha: Ymd, f: Filtros): De
   return { aplican, revisar }
 }
 
-export function valoresUnicos(items: Descuento[], key: 'tarjeta' | 'zona' | 'canal' | 'categoriaGrupo'): string[] {
-  return [...new Set(items.map((d) => d[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+export function valoresUnicos(items: Descuento[], key: 'tarjeta' | 'zona' | 'canal' | 'categoriaGrupo' | 'tipo'): string[] {
+  const porConfirmar = (s: string) => (norm(s) === 'por confirmar' ? 1 : 0)
+  return [...new Set(items.map((d) => d[key]).filter(Boolean))].sort((a, b) => porConfirmar(a) - porConfirmar(b) || a.localeCompare(b, 'es'))
 }
 
 // ---------- Buscar comercio ----------
@@ -76,7 +83,7 @@ export function comerciosQueCalzan(items: Descuento[], texto: string): string[] 
   const set = new Map<string, string>()
   for (const d of items) {
     const k = norm(d.comercio)
-    if (k.includes(t) || norm(d.comuna).includes(t)) set.set(k, set.get(k) ?? d.comercio)
+    if (calzaTexto(d, t)) set.set(k, set.get(k) ?? d.comercio)
   }
   return [...set.values()].sort((a, b) => a.localeCompare(b, 'es'))
 }

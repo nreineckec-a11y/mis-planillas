@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { importarLibro, type ResultadoImportacion } from './lib/importar'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { importarLibro, normalizarRegistro, type ResultadoImportacion } from './lib/importar'
 import { SCHEMA, type Registro, type RegistroCuentas, type RegistroDescuentos, type Tipo } from './lib/model'
 import * as storage from './lib/storage'
+import { reconciliar, SIN_CAMBIOS, type CambiosTrabajo } from './lib/cuentas/cambios'
 
 interface Estado {
   cargando: boolean
@@ -15,6 +16,9 @@ interface Estado {
   importar: (files: FileList | File[]) => Promise<void>
   borrar: (tipo: Tipo) => Promise<void>
   cerrarImportacion: () => void
+  /** Turnos agregados y marcas de pago hechas en la app. */
+  cambios: CambiosTrabajo
+  actualizarCambios: (fn: (c: CambiosTrabajo) => CambiosTrabajo) => Promise<void>
 }
 
 const Ctx = createContext<Estado | null>(null)
@@ -27,6 +31,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [persistido, setPersistido] = useState<boolean | null>(null)
   const [ultimaImportacion, setUltima] = useState<ResultadoImportacion[] | null>(null)
   const [importando, setImportando] = useState(false)
+  const [cambios, setCambios] = useState<CambiosTrabajo>(SIN_CAMBIOS)
+  // Copia sincrónica para encadenar actualizaciones sin perder ninguna.
+  const cambiosRef = useRef<CambiosTrabajo>(SIN_CAMBIOS)
+
+  const fijarCambios = useCallback(async (c: CambiosTrabajo) => {
+    cambiosRef.current = c
+    setCambios(c)
+    await storage.guardarCambios(c)
+  }, [])
 
   const aplicar = useCallback((r: Registro) => {
     if (r.tipo === 'cuentas') setCuentas(r)
@@ -41,12 +54,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const r = await storage.leer(tipo)
           if (!r) continue
           if (r.schema !== SCHEMA) viejos.push(tipo)
-          else aplicar(r)
+          else aplicar(normalizarRegistro(r))
         } catch {
           /* IndexedDB no disponible: la app parte vacía */
         }
       }
       setObsoletos(viejos)
+      try {
+        const c = await storage.leerCambios()
+        cambiosRef.current = c
+        setCambios(c)
+      } catch {
+        /* sin cambios guardados */
+      }
       setPersistido(await storage.estaPersistido())
       setCargando(false)
     })()
@@ -68,6 +88,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }
           aplicar(r.registro)
           setObsoletos((o) => o.filter((t) => t !== r.registro.tipo))
+          if (r.registro.tipo === 'cuentas') {
+            const { cambios: c, notas } = reconciliar(r.registro.datos, cambiosRef.current)
+            await fijarCambios(c)
+            if (notas.length) r.notas = notas
+          }
         }
         resultados.push(r)
       }
@@ -75,8 +100,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setUltima(resultados)
       setImportando(false)
     },
-    [aplicar],
+    [aplicar, fijarCambios],
   )
+
+  const actualizarCambios = useCallback((fn: (c: CambiosTrabajo) => CambiosTrabajo) => fijarCambios(fn(cambiosRef.current)), [fijarCambios])
 
   const borrar = useCallback(async (tipo: Tipo) => {
     await storage.borrar(tipo)
@@ -97,8 +124,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       importar,
       borrar,
       cerrarImportacion: () => setUltima(null),
+      cambios,
+      actualizarCambios,
     }),
-    [cargando, cuentas, descuentos, obsoletos, persistido, ultimaImportacion, importando, importar, borrar],
+    [cargando, cuentas, descuentos, obsoletos, persistido, ultimaImportacion, importando, importar, borrar, cambios, actualizarCambios],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

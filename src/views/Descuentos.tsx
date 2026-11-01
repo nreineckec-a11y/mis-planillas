@@ -12,6 +12,7 @@ const LETRAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const ZONA_POR_DEFECTO = 'RM / online'
 
 type FiltrosGuardados = Omit<Filtros, 'texto'>
+const SIN_FILTROS: FiltrosGuardados = { tarjetas: [], zonas: [], canales: [], categorias: [], tipos: [] }
 
 function valorDescuento(d: Descuento): string {
   if (d.pct !== null) return pct(d.pct)
@@ -75,12 +76,15 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
       zonas: valoresUnicos(items, 'zona'),
       canales: valoresUnicos(items, 'canal'),
       categorias: valoresUnicos(items, 'categoriaGrupo'),
+      tipos: valoresUnicos(items, 'tipo'),
     }),
     [items],
   )
   const [guardados, setGuardados] = useState<FiltrosGuardados>(() => {
-    const def = { tarjetas: [], canales: [], categorias: [], zonas: opciones.zonas.filter((z) => norm(z) === norm(ZONA_POR_DEFECTO)) }
-    return prefLeer<FiltrosGuardados>('filtros', def)
+    const sinEspacios = (s: string) => norm(s).replace(/\s/g, '')
+    const def: FiltrosGuardados = { ...SIN_FILTROS, zonas: opciones.zonas.filter((z) => sinEspacios(z) === sinEspacios(ZONA_POR_DEFECTO)) }
+    // Completa con los valores por defecto los campos que no existían en filtros guardados antiguos.
+    return { ...def, ...prefLeer<Partial<FiltrosGuardados>>('filtros', {}) }
   })
   // Solo valores que existen en el Excel actual (un filtro viejo no debe vaciar la lista sin aviso).
   const filtros: FiltrosGuardados = {
@@ -88,6 +92,7 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
     zonas: guardados.zonas.filter((x) => opciones.zonas.includes(x)),
     canales: guardados.canales.filter((x) => opciones.canales.includes(x)),
     categorias: guardados.categorias.filter((x) => opciones.categorias.includes(x)),
+    tipos: guardados.tipos.filter((x) => opciones.tipos.includes(x)),
   }
   useEffect(() => prefGuardar('filtros', guardados), [guardados])
 
@@ -96,8 +101,14 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
   const [abrirFiltros, setAbrirFiltros] = useState(false)
   const fecha = addDays(hoy, offset)
   const { aplican, revisar } = descuentosDelDia(items, fecha, { ...filtros, texto })
+  // Tipos de comida con descuento ese día (con el resto de los filtros aplicados), para los chips rápidos.
+  const conteoTipos = new Map<string, number>()
+  for (const d of descuentosDelDia(items, fecha, { ...filtros, tipos: [], texto }).aplican) if (d.tipo) conteoTipos.set(d.tipo, (conteoTipos.get(d.tipo) ?? 0) + 1)
+  const tiposDelDia = opciones.tipos.filter((t) => conteoTipos.has(t) || filtros.tipos.includes(t)).map((t) => ({ tipo: t, n: conteoTipos.get(t) ?? 0 }))
+  const toggleTipo = (t: string) =>
+    setGuardados({ ...filtros, tipos: filtros.tipos.includes(t) ? filtros.tipos.filter((x) => x !== t) : [...filtros.tipos, t] })
 
-  const nFiltros = filtros.tarjetas.length + filtros.zonas.length + filtros.canales.length + filtros.categorias.length
+  const nFiltros = filtros.tarjetas.length + filtros.zonas.length + filtros.canales.length + filtros.categorias.length + filtros.tipos.length
   // Chips de los próximos 7 días, partiendo por hoy.
   const dias = [0, 1, 2, 3, 4, 5, 6].map((off) => {
     const f = addDays(hoy, off)
@@ -135,7 +146,7 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
           type="search"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Buscar comercio o comuna"
+          placeholder="Comercio, comuna o tipo (ej: pizza)"
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-base dark:border-slate-700 dark:bg-slate-900"
         />
         <Chip active={nFiltros > 0} onClick={() => setAbrirFiltros(true)}>
@@ -144,8 +155,24 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
       </div>
       {nFiltros > 0 && (
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Filtrando: {[...filtros.tarjetas, ...filtros.zonas, ...filtros.canales, ...filtros.categorias].join(' · ')}
+          Filtrando: {[...filtros.tarjetas, ...filtros.zonas, ...filtros.canales, ...filtros.categorias, ...filtros.tipos].join(' · ')}
         </p>
+      )}
+
+      {tiposDelDia.length > 0 && (
+        <div className="-mx-4 mt-3">
+          <div className="px-4 text-xs font-semibold text-slate-500 dark:text-slate-400">Tipo de comida</div>
+          <div className="mt-1 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Tipo de comida">
+            <Chip active={filtros.tipos.length === 0} onClick={() => setGuardados({ ...filtros, tipos: [] })} className="min-h-10 px-3">
+              Todos
+            </Chip>
+            {tiposDelDia.map(({ tipo, n }) => (
+              <Chip key={tipo} active={filtros.tipos.includes(tipo)} onClick={() => toggleTipo(tipo)} className="min-h-10 whitespace-nowrap px-3">
+                {tipo} <span className="opacity-60">{n}</span>
+              </Chip>
+            ))}
+          </div>
+        </div>
       )}
 
       <p className="mt-4 mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -176,8 +203,9 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
         <GrupoFiltro titulo="Zona" valores={opciones.zonas} sel={filtros.zonas} onChange={(v) => setGuardados({ ...filtros, zonas: v })} />
         <GrupoFiltro titulo="Canal" valores={opciones.canales} sel={filtros.canales} onChange={(v) => setGuardados({ ...filtros, canales: v })} />
         <GrupoFiltro titulo="Categoría" valores={opciones.categorias} sel={filtros.categorias} onChange={(v) => setGuardados({ ...filtros, categorias: v })} />
+        <GrupoFiltro titulo="Tipo de comida" valores={opciones.tipos} sel={filtros.tipos} onChange={(v) => setGuardados({ ...filtros, tipos: v })} />
         <div className="sticky bottom-0 flex gap-2 bg-white py-3 dark:bg-slate-900">
-          <button type="button" className="min-h-12 flex-1 rounded-xl border border-slate-300 font-semibold dark:border-slate-700" onClick={() => setGuardados({ tarjetas: [], zonas: [], canales: [], categorias: [] })}>
+          <button type="button" className="min-h-12 flex-1 rounded-xl border border-slate-300 font-semibold dark:border-slate-700" onClick={() => setGuardados(SIN_FILTROS)}>
             Limpiar
           </button>
           <button type="button" className="min-h-12 flex-1 rounded-xl bg-teal-700 font-semibold text-white dark:bg-teal-600" onClick={() => setAbrirFiltros(false)}>
@@ -223,6 +251,7 @@ function TarjetaDescuento({ d, onClick }: { d: Descuento; onClick: () => void })
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {d.tarjeta && <Etiqueta className={colorTarjeta(d.tarjeta)}>{d.tarjeta}</Etiqueta>}
+            {d.tipo && norm(d.tipo) !== 'por confirmar' && <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{d.tipo}</span>}
             {d.comuna && <span className="text-xs text-slate-500 dark:text-slate-400">{d.comuna}</span>}
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{textoTope(d)}</div>
@@ -251,6 +280,7 @@ function DetalleDescuento({ d, onClose }: { d: Descuento | null; onClose: () => 
     ['Comuna / región', d.comuna],
     ['Zona', d.zona],
     ['Categoría', d.categoria],
+    ['Tipo de comida', d.tipo],
     ['Verificación', d.verificacion],
   ]
   return (
@@ -287,6 +317,17 @@ function Buscar({ items, onDetalle }: { items: Descuento[]; onDetalle: (d: Descu
   const [comercio, setComercio] = useState<string | null>(null)
   const encontrados = useMemo(() => comerciosQueCalzan(items, texto).slice(0, 60), [items, texto])
   const tabla = useMemo(() => (comercio ? tablaComercio(items, comercio) : null), [items, comercio])
+  // Tipo de comida y comuna para mostrar bajo cada comercio de la lista.
+  const infoComercio = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const d of items) {
+      const k = norm(d.comercio)
+      if (m.has(k)) continue
+      const tipo = d.tipo && norm(d.tipo) !== 'por confirmar' ? d.tipo : ''
+      m.set(k, [tipo, d.comuna].filter(Boolean).join(' · '))
+    }
+    return m
+  }, [items])
 
   return (
     <div className="px-4 pb-6">
@@ -297,7 +338,7 @@ function Buscar({ items, onDetalle }: { items: Descuento[]; onDetalle: (d: Descu
           setTexto(e.target.value)
           setComercio(null)
         }}
-        placeholder="Nombre del comercio o comuna"
+        placeholder="Comercio, comuna o tipo (ej: italiano)"
         className="mt-3 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-base dark:border-slate-700 dark:bg-slate-900"
         autoFocus
       />
@@ -305,19 +346,21 @@ function Buscar({ items, onDetalle }: { items: Descuento[]; onDetalle: (d: Descu
         <ul className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
           {encontrados.map((c) => (
             <li key={c}>
-              <button type="button" onClick={() => setComercio(c)} className="min-h-12 w-full px-4 text-left">
-                {c}
+              <button type="button" onClick={() => setComercio(c)} className="min-h-12 w-full px-4 py-2 text-left">
+                <span className="block">{c}</span>
+                {infoComercio.get(norm(c)) && <span className="block text-xs text-slate-500 dark:text-slate-400">{infoComercio.get(norm(c))}</span>}
               </button>
             </li>
           ))}
           {encontrados.length === 0 && <li className="p-4 text-sm text-slate-500">Sin resultados en este mes.</li>}
         </ul>
       )}
-      {!texto && <p className="mt-6 text-center text-sm text-slate-500">Escribe un comercio para ver qué día y con qué tarjeta conviene.</p>}
+      {!texto && <p className="mt-6 text-center text-sm text-slate-500">Escribe un comercio o un tipo de comida para ver qué día y con qué tarjeta conviene.</p>}
 
       {tabla && comercio && (
         <div className="mt-4">
           <h2 className="text-lg font-semibold">{comercio}</h2>
+          {infoComercio.get(norm(comercio)) && <p className="text-sm text-slate-500 dark:text-slate-400">{infoComercio.get(norm(comercio))}</p>}
           {tabla.tarjetas.length > 0 && (
             <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <table className="w-full table-fixed text-center text-sm">

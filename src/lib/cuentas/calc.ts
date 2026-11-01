@@ -1,6 +1,6 @@
 import { compareYmd, toDayNumber, type Ymd } from '../dates'
 import { clp } from '../format'
-import type { DatosPersonal, EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaCompensatorias, HojaHorasExtra, ItemPersonal, Parametros } from '../model'
+import type { DatosPersonal, EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaHorasExtra, ItemPersonal, Parametros } from '../model'
 
 // ---------- Personal ----------
 
@@ -115,8 +115,8 @@ export function totalesHE(hoja: HojaHorasExtra): Record<EstadoHE | 'Total', Tota
   return out
 }
 
-export function agruparPorMes(filas: FilaHorasExtra[]): { mes: string; filas: FilaHorasExtra[] }[] {
-  const grupos: { mes: string; filas: FilaHorasExtra[] }[] = []
+export function agruparPorMes<F extends FilaHorasExtra>(filas: F[]): { mes: string; filas: F[] }[] {
+  const grupos: { mes: string; filas: F[] }[] = []
   for (const f of filas) {
     let g = grupos.find((x) => x.mes === f.mes)
     if (!g) grupos.push((g = { mes: f.mes, filas: [] }))
@@ -129,7 +129,7 @@ export function agruparPorMes(filas: FilaHorasExtra[]): { mes: string; filas: Fi
 
 export type EstadoComp = 'Realizada' | 'Programada'
 
-export interface FilaCompCalc extends FilaCompensatoria {
+export type FilaCompCalc<F extends FilaCompensatoria = FilaCompensatoria> = F & {
   factor: number | null
   generadas: number | null
   estado: EstadoComp
@@ -137,7 +137,7 @@ export interface FilaCompCalc extends FilaCompensatoria {
   equivalente: number | null
 }
 
-export function calcularComp(hoja: HojaCompensatorias, hoy: Ymd): FilaCompCalc[] {
+export function calcularComp<F extends FilaCompensatoria>(hoja: Parametros & { filas: F[] }, hoy: Ymd): FilaCompCalc<F>[] {
   return hoja.filas.map((f) => {
     const factor = factorDe(hoja, f.recargo)
     const generadas = factor === null ? null : f.horasTrabajadas * factor
@@ -146,7 +146,7 @@ export function calcularComp(hoja: HojaCompensatorias, hoy: Ymd): FilaCompCalc[]
       ...f,
       factor,
       generadas,
-      estado: compareYmd(f.fecha, hoy) <= 0 ? 'Realizada' : 'Programada',
+      estado: (compareYmd(f.fecha, hoy) <= 0 ? 'Realizada' : 'Programada') as EstadoComp,
       saldo,
       equivalente: saldo === null || hoja.valorHora === null ? null : saldo * hoja.valorHora,
     }
@@ -183,7 +183,7 @@ export function totalesComp(filas: FilaCompCalc[]): Record<EstadoComp | 'Total',
 }
 
 /** Próximas programadas (más cercana primero) y luego realizadas (más reciente primero). */
-export function ordenarComp(filas: FilaCompCalc[]): FilaCompCalc[] {
+export function ordenarComp<F extends FilaCompensatoria>(filas: FilaCompCalc<F>[]): FilaCompCalc<F>[] {
   const prog = filas.filter((f) => f.estado === 'Programada').sort((a, b) => toDayNumber(a.fecha) - toDayNumber(b.fecha))
   const real = filas.filter((f) => f.estado === 'Realizada').sort((a, b) => toDayNumber(b.fecha) - toDayNumber(a.fecha))
   return [...prog, ...real]

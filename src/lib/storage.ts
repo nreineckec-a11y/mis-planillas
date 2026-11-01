@@ -1,5 +1,6 @@
 // Persistencia local en IndexedDB. Nada sale del dispositivo.
 import type { Registro, Tipo } from './model'
+import { SIN_CAMBIOS, type CambiosTrabajo } from './cuentas/cambios'
 
 const DB = 'mis-planillas'
 const STORE = 'registros'
@@ -31,6 +32,14 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 export const guardar = (r: Registro) => tx('readwrite', (s) => s.put(r, r.tipo))
 export const leer = (tipo: Tipo) => tx<Registro | undefined>('readonly', (s) => s.get(tipo))
 export const borrar = (tipo: Tipo) => tx('readwrite', (s) => s.delete(tipo))
+
+// Cambios hechos en la app (turnos agregados, marcas de pago): sobreviven a cargar un Excel nuevo.
+const CLAVE_CAMBIOS = 'cambios-trabajo'
+export const guardarCambios = (c: CambiosTrabajo) => tx('readwrite', (s) => s.put(c, CLAVE_CAMBIOS))
+export async function leerCambios(): Promise<CambiosTrabajo> {
+  const c = await tx<CambiosTrabajo | undefined>('readonly', (s) => s.get(CLAVE_CAMBIOS))
+  return { ...SIN_CAMBIOS, ...c }
+}
 
 /** Pide al navegador no borrar los datos (importante en iOS). */
 export async function pedirPersistencia(): Promise<boolean | null> {

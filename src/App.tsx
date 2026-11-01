@@ -84,6 +84,11 @@ function ResultadoImportacion() {
                   ✓ {NOMBRE_TIPO[r.registro.tipo]}: {r.registro.filas} filas importadas, {resumenAdvertencias(r.registro.advertencias)}.
                 </p>
                 <ListaAdvertencias adv={r.registro.advertencias} />
+                {r.notas?.map((n, j) => (
+                  <p key={j} className="mt-2 rounded-lg bg-sky-50 px-2 py-1.5 text-xs text-sky-900 dark:bg-sky-950/60 dark:text-sky-200">
+                    {n}
+                  </p>
+                ))}
               </>
             ) : (
               <p className="mt-1 whitespace-pre-line text-sm text-rose-700 dark:text-rose-400">✗ {r.error}</p>

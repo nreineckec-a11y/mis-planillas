@@ -83,3 +83,8 @@ export function formatYmd({ y, m, d }: Ymd): string {
 export function formatYmdCorta({ m, d }: Ymd): string {
   return `${d} ${MESES[m - 1].slice(0, 3)}`
 }
+
+/** Para <input type="date">: "2026-11-05". */
+export function toIsoDate({ y, m, d }: Ymd): string {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}

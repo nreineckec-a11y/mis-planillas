@@ -28,6 +28,26 @@ Después de la primera carga funciona sin conexión.
 
 Ajustes → **Cargar Excel** → elige uno o ambos archivos. La app detecta el tipo por las hojas y encabezados (no por el nombre del archivo) y muestra cuántas filas importó y las advertencias (filas incompletas, valores no reconocidos).
 
+## Trabajo: agregar turnos y marcar pagos desde la app
+
+En **Trabajo → Horas extra** puedes:
+
+- **Agregar un turno** (fecha, horas, recargo, detalle, estado). El recargo se sugiere según el día (sábado y domingo, 50%) y el estado según la fecha (futuro, Programado).
+- **Marcar como pagados** varios turnos de una vez: toca ☐ en cada uno → **Marcar pagados** → elige la liquidación (opcional).
+- Tocar un turno permite cambiar su estado; si lo agregaste en la app, también editarlo o eliminarlo.
+
+En **Compensatorias** también puedes agregar turnos.
+
+Estos cambios se guardan en el teléfono **aparte del Excel**, así que no se pierden al cargar un Excel nuevo. Un aviso morado indica cuántos cambios faltan por pasar al Excel, con un botón para **copiar un resumen** y anotarlos allá. Cuando cargues un Excel que ya los incluya, la app los quita sola:
+
+- Un turno agregado se considera anotado si en el Excel hay una fila del mismo mes, con las mismas horas y el mismo recargo, y cuya Fecha contiene el día.
+- Un cambio de estado se considera anotado si la fila del Excel ya tiene ese estado.
+- Si editaste la fila en el Excel y la app ya no la encuentra, te avisa para que revises y deshagas el cambio.
+
+## Descuentos: tipo de comida
+
+Si la hoja `Por día` trae la columna **Tipo de restaurante** (Pizzería, Italiano, Sushi y nikkei…), la app muestra chips de tipo de comida bajo el buscador (solo los que tienen descuento ese día) y un filtro "Tipo de comida". El buscador también encuentra por tipo ("pizza", "nikkei"), tanto en **Por día** como en **Buscar comercio**. La columna es opcional.
+
 ## Correr en local
 
 Requiere Node 22.
@@ -65,7 +85,7 @@ Cuando publiques una versión nueva, la app se actualiza sola la próxima vez qu
 
 ### Descuentos
 
-Solo la hoja `Por día`. El mes del set sale del título en `Resumen!A1` (ej. "Descuentos de octubre 2026"). Si el mes no coincide con el actual, la app avisa.
+Solo la hoja `Por día` (incluida la columna opcional `Tipo de restaurante`). El mes del set sale del título en `Resumen!A1` (ej. "Descuentos de octubre 2026"). Si el mes no coincide con el actual, la app avisa.
 
 Las celdas con relleno amarillo (`FFF2CC` o cualquier amarillo claro, incluso elegido desde la paleta de tema) en "Tarjetas que aplican" o "Verificación" marcan el descuento con ⚠︎.
 

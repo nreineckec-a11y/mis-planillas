@@ -65,9 +65,17 @@ try {
     await page.getByRole('button', { name: /^Filtros/ }).click()
     await shot('05-filtros')
     await page.getByRole('button', { name: /^Ver \d/ }).click()
+    // Chips de tipo de comida.
+    await page.getByRole('group', { name: 'Tipo de comida' }).getByRole('button', { name: /Sushi y nikkei/ }).click()
+    await page.waitForTimeout(300) // deja terminar la transición de color de los chips
+    if ((await page.getByRole('group', { name: 'Tipo de comida' }).getByRole('button', { name: /Sushi y nikkei/ }).getAttribute('aria-pressed')) !== 'true')
+      errores.push('el chip de tipo de comida no quedó activo')
+    if ((await page.getByText(/^\d+ descuentos?$/).innerText()) !== '1 descuento') errores.push('el filtro por tipo no filtró')
+    await shot('17-tipo-comida')
+    await page.getByRole('group', { name: 'Tipo de comida' }).getByRole('button', { name: 'Todos' }).click()
     await page.getByRole('button', { name: 'Buscar comercio' }).click()
-    await page.getByPlaceholder('Nombre del comercio o comuna').fill('resto')
-    await page.getByRole('button', { name: 'Restorán Uno' }).click()
+    await page.getByPlaceholder(/^Comercio, comuna o tipo/).fill('italia')
+    await page.getByRole('button', { name: /^Restorán Uno/ }).click()
     await shot('06-buscar-comercio')
 
     await page.getByRole('button', { name: /Personas/ }).click()
@@ -82,6 +90,39 @@ try {
 
     await page.getByRole('button', { name: /Trabajo/ }).click()
     await shot('09-horas-extra')
+
+    // Agregar un turno de horas extra.
+    await page.getByRole('button', { name: '+ Agregar turno' }).click()
+    await page.locator('input[type=date]').fill('2026-10-10')
+    await page.getByLabel(/^Horas/).fill('3,5')
+    await page.getByLabel('Detalle').fill('Turno sábado')
+    await shot('13-form-turno')
+    await page.getByRole('button', { name: 'Agregar turno', exact: true }).click()
+    await page.getByText('Turno sábado').waitFor()
+
+    // Marcar dos turnos como pagados de una vez.
+    await page.getByRole('checkbox', { name: 'Seleccionar Reunión' }).click()
+    await page.getByRole('checkbox', { name: 'Seleccionar Turno sábado' }).click()
+    await shot('14-seleccion')
+    await page.getByRole('button', { name: '✓ Marcar pagados' }).click()
+    await page.getByRole('button', { name: 'Liq. octubre' }).click()
+    await page.getByRole('button', { name: /Marcar 2 turnos como pagados/ }).click()
+    await page.getByText('2 cambios hechos en la app').waitFor()
+    await shot('15-pagados')
+    const pagado = await page.locator('button[aria-pressed]').filter({ hasText: 'Pagado' }).first().innerText()
+    if (!pagado.includes('$132.500')) errores.push(`total pagado inesperado: ${pagado}`)
+
+    // Al cargar de nuevo el mismo Excel, los cambios se mantienen.
+    await page.getByRole('button', { name: /Ajustes/ }).click()
+    await page.locator('input[type=file]').first().setInputFiles(['tests/fixtures/cuentas.xlsx'])
+    await page.getByText('Quedan 2 cambios de la app por pasar al Excel.').waitFor()
+    await page.getByRole('button', { name: 'Listo' }).click()
+    await page.getByRole('button', { name: /Trabajo/ }).click()
+    await page.getByText('Turno sábado').waitFor()
+    await page.getByText('2 cambios hechos en la app').click()
+    await shot('16-cambios-app')
+    await page.getByRole('button', { name: 'Cerrar' }).last().click()
+
     await page.getByRole('button', { name: 'Compensatorias' }).click()
     await shot('10-compensatorias')
     await page.getByRole('button', { name: /Ajustes/ }).click()

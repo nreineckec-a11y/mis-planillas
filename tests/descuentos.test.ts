@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { esAmarillo, grupoCategoria, parsePeriodo, parseDescuentos } from '../src/lib/descuentos/parse'
 import { parseFechasEspecificas } from '../src/lib/descuentos/fechas'
-import { descuentosDelDia, FILTROS_VACIOS, tablaComercio, valoresUnicos } from '../src/lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDelDia, FILTROS_VACIOS, tablaComercio, valoresUnicos } from '../src/lib/descuentos/filtros'
 import { libro } from './helpers'
 
 const { datos, advertencias } = parseDescuentos(libro('descuentos.xlsx'), 2026)
@@ -112,5 +112,32 @@ describe('buscar comercio', () => {
     expect(t.celdas['Banco Beta'].map((d) => d?.pct ?? null)).toEqual([0.2, null, null, null, null, null, null])
     const farmacia = tablaComercio(datos.items, 'Farmacia Ávila')
     expect(farmacia.celdas['Banco Gamma'].every((d) => d?.pct === 0.1)).toBe(true)
+  })
+})
+
+describe('tipo de restaurante', () => {
+  it('lee la columna por nombre aunque esté al final', () => {
+    expect(porComercio('Restorán Uno').tipo).toBe('Italiano')
+    expect(porComercio('Pizzería Falsa').tipo).toBe('Pizzería')
+    expect(porComercio('Farmacia Ávila').tipo).toBe('')
+  })
+
+  it('lista de tipos con "Por confirmar" al final', () => {
+    expect(valoresUnicos(datos.items, 'tipo')).toEqual(['Italiano', 'Pizzería', 'Sushi y nikkei', 'Por confirmar'])
+  })
+
+  it('filtra por tipo y busca por texto del tipo', () => {
+    const lunes = { y: 2026, m: 10, d: 12 }
+    const sel = (f: Partial<typeof FILTROS_VACIOS>) =>
+      descuentosDelDia(datos.items, lunes, { ...FILTROS_VACIOS, ...f }).aplican.map((d) => `${d.comercio}|${d.tarjeta}`)
+    expect(sel({ tipos: ['Italiano'] })).toEqual(['Restorán Uno|Banco Alfa', 'Restorán Uno|Banco Beta'])
+    expect(sel({ tipos: ['Pizzería'] })).toEqual([])
+    expect(sel({ texto: 'italia' })).toEqual(['Restorán Uno|Banco Alfa', 'Restorán Uno|Banco Beta'])
+    expect(comerciosQueCalzan(datos.items, 'nikkei')).toEqual(['Sushi Test'])
+  })
+
+  it('archivos sin la columna siguen funcionando', () => {
+    const r = parseDescuentos(libro('descuentos.xlsx'), 2026)
+    expect(r.advertencias.some((a) => a.mensaje.includes('Tipo'))).toBe(false)
   })
 })
