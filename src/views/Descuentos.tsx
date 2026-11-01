@@ -5,6 +5,7 @@ import { clp, pct } from '../lib/format'
 import type { Descuento } from '../lib/model'
 import { comerciosQueCalzan, descuentosDelDia, tablaComercio, valoresUnicos, type Filtros } from '../lib/descuentos/filtros'
 import { norm } from '../lib/text'
+import { conEmoji } from '../lib/descuentos/emoji'
 import { prefGuardar, prefLeer } from '../lib/storage'
 import { useDatos, useHoy } from '../state'
 
@@ -168,7 +169,7 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
             </Chip>
             {tiposDelDia.map(({ tipo, n }) => (
               <Chip key={tipo} active={filtros.tipos.includes(tipo)} onClick={() => toggleTipo(tipo)} className="min-h-10 whitespace-nowrap px-3">
-                {tipo} <span className="opacity-60">{n}</span>
+                {conEmoji(tipo)} <span className="opacity-60">{n}</span>
               </Chip>
             ))}
           </div>
@@ -203,7 +204,7 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
         <GrupoFiltro titulo="Zona" valores={opciones.zonas} sel={filtros.zonas} onChange={(v) => setGuardados({ ...filtros, zonas: v })} />
         <GrupoFiltro titulo="Canal" valores={opciones.canales} sel={filtros.canales} onChange={(v) => setGuardados({ ...filtros, canales: v })} />
         <GrupoFiltro titulo="Categoría" valores={opciones.categorias} sel={filtros.categorias} onChange={(v) => setGuardados({ ...filtros, categorias: v })} />
-        <GrupoFiltro titulo="Tipo de comida" valores={opciones.tipos} sel={filtros.tipos} onChange={(v) => setGuardados({ ...filtros, tipos: v })} />
+        <GrupoFiltro titulo="Tipo de comida" valores={opciones.tipos} sel={filtros.tipos} onChange={(v) => setGuardados({ ...filtros, tipos: v })} etiqueta={conEmoji} />
         <div className="sticky bottom-0 flex gap-2 bg-white py-3 dark:bg-slate-900">
           <button type="button" className="min-h-12 flex-1 rounded-xl border border-slate-300 font-semibold dark:border-slate-700" onClick={() => setGuardados(SIN_FILTROS)}>
             Limpiar
@@ -217,7 +218,19 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
   )
 }
 
-function GrupoFiltro({ titulo, valores, sel, onChange }: { titulo: string; valores: string[]; sel: string[]; onChange: (v: string[]) => void }) {
+function GrupoFiltro({
+  titulo,
+  valores,
+  sel,
+  onChange,
+  etiqueta = (v) => v,
+}: {
+  titulo: string
+  valores: string[]
+  sel: string[]
+  onChange: (v: string[]) => void
+  etiqueta?: (v: string) => string
+}) {
   if (valores.length === 0) return null
   const toggle = (v: string) => onChange(sel.includes(v) ? sel.filter((x) => x !== v) : [...sel, v])
   return (
@@ -228,7 +241,7 @@ function GrupoFiltro({ titulo, valores, sel, onChange }: { titulo: string; valor
       <div className="flex flex-wrap gap-2">
         {valores.map((v) => (
           <Chip key={v} active={sel.includes(v)} onClick={() => toggle(v)} className="min-h-10 px-3">
-            {v}
+            {etiqueta(v)}
           </Chip>
         ))}
       </div>
@@ -251,7 +264,7 @@ function TarjetaDescuento({ d, onClick }: { d: Descuento; onClick: () => void })
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {d.tarjeta && <Etiqueta className={colorTarjeta(d.tarjeta)}>{d.tarjeta}</Etiqueta>}
-            {d.tipo && norm(d.tipo) !== 'por confirmar' && <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{d.tipo}</span>}
+            {d.tipo && norm(d.tipo) !== 'por confirmar' && <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{conEmoji(d.tipo)}</span>}
             {d.comuna && <span className="text-xs text-slate-500 dark:text-slate-400">{d.comuna}</span>}
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{textoTope(d)}</div>
@@ -280,7 +293,7 @@ function DetalleDescuento({ d, onClose }: { d: Descuento | null; onClose: () => 
     ['Comuna / región', d.comuna],
     ['Zona', d.zona],
     ['Categoría', d.categoria],
-    ['Tipo de comida', d.tipo],
+    ['Tipo de comida', conEmoji(d.tipo)],
     ['Verificación', d.verificacion],
   ]
   return (
@@ -323,7 +336,7 @@ function Buscar({ items, onDetalle }: { items: Descuento[]; onDetalle: (d: Descu
     for (const d of items) {
       const k = norm(d.comercio)
       if (m.has(k)) continue
-      const tipo = d.tipo && norm(d.tipo) !== 'por confirmar' ? d.tipo : ''
+      const tipo = d.tipo && norm(d.tipo) !== 'por confirmar' ? conEmoji(d.tipo) : ''
       m.set(k, [tipo, d.comuna].filter(Boolean).join(' · '))
     }
     return m
