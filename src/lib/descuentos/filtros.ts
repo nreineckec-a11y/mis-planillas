@@ -8,15 +8,20 @@ export interface Filtros {
   canales: string[]
   categorias: string[]
   tipos: string[]
+  sectores: string[]
   texto: string
 }
 
-export const FILTROS_VACIOS: Filtros = { tarjetas: [], zonas: [], canales: [], categorias: [], tipos: [], texto: '' }
+export const FILTROS_VACIOS: Filtros = { tarjetas: [], zonas: [], canales: [], categorias: [], tipos: [], sectores: [], texto: '' }
 
-/** Coincidencia de texto libre: comercio, comuna o tipo de comida (sin tildes ni mayúsculas). */
+/** Por defecto se muestran todas las zonas menos estas (equivale al antiguo "RM/online"). */
+const ZONAS_FUERA_POR_DEFECTO = ['regiones', 'region', 'solo regiones']
+export const zonasPorDefecto = (zonas: string[]) => zonas.filter((z) => !ZONAS_FUERA_POR_DEFECTO.includes(norm(z)))
+
+/** Coincidencia de texto libre: comercio, comuna, sector o tipo (sin tildes ni mayúsculas). */
 export function calzaTexto(d: Descuento, texto: string): boolean {
   const t = norm(texto)
-  return !t || norm(d.comercio).includes(t) || norm(d.comuna).includes(t) || norm(d.tipo).includes(t)
+  return !t || [d.comercio, d.comuna, d.sector, d.tipo].some((x) => norm(x).includes(t))
 }
 
 export function pasaFiltros(d: Descuento, f: Filtros): boolean {
@@ -25,6 +30,7 @@ export function pasaFiltros(d: Descuento, f: Filtros): boolean {
   if (f.canales.length && !f.canales.includes(d.canal)) return false
   if (f.categorias.length && !f.categorias.includes(d.categoriaGrupo)) return false
   if (f.tipos.length && !f.tipos.includes(d.tipo)) return false
+  if (f.sectores.length && !f.sectores.includes(d.sector)) return false
   return calzaTexto(d, f.texto)
 }
 
@@ -70,7 +76,7 @@ export function descuentosDelDia(items: Descuento[], fecha: Ymd, f: Filtros): De
   return { aplican, revisar }
 }
 
-export function valoresUnicos(items: Descuento[], key: 'tarjeta' | 'zona' | 'canal' | 'categoriaGrupo' | 'tipo'): string[] {
+export function valoresUnicos(items: Descuento[], key: 'tarjeta' | 'zona' | 'canal' | 'categoriaGrupo' | 'tipo' | 'sector'): string[] {
   const porConfirmar = (s: string) => (norm(s) === 'por confirmar' ? 1 : 0)
   return [...new Set(items.map((d) => d[key]).filter(Boolean))].sort((a, b) => porConfirmar(a) - porConfirmar(b) || a.localeCompare(b, 'es'))
 }

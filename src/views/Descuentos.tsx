@@ -3,17 +3,23 @@ import { Card, Chip, Colapsable, Etiqueta, Header, Segmented, Sheet, Vacio, colo
 import { addDays, DIAS, MESES, today, weekday, type Ymd } from '../lib/dates'
 import { clp, pct } from '../lib/format'
 import type { Descuento } from '../lib/model'
-import { comerciosQueCalzan, descuentosDelDia, tablaComercio, valoresUnicos, type Filtros } from '../lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDelDia, tablaComercio, valoresUnicos, zonasPorDefecto, type Filtros } from '../lib/descuentos/filtros'
 import { norm } from '../lib/text'
-import { conEmoji } from '../lib/descuentos/emoji'
+import { conEmoji, conEmojiCategoria } from '../lib/descuentos/emoji'
 import { prefGuardar, prefLeer } from '../lib/storage'
 import { useDatos, useHoy } from '../state'
 
 const LETRAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-const ZONA_POR_DEFECTO = 'RM / online'
-
 type FiltrosGuardados = Omit<Filtros, 'texto'>
-const SIN_FILTROS: FiltrosGuardados = { tarjetas: [], zonas: [], canales: [], categorias: [], tipos: [] }
+const SIN_FILTROS: FiltrosGuardados = { tarjetas: [], zonas: [], canales: [], categorias: [], tipos: [], sectores: [] }
+const GRUPOS: { key: keyof FiltrosGuardados; plural: string }[] = [
+  { key: 'tarjetas', plural: 'tarjetas' },
+  { key: 'zonas', plural: 'zonas' },
+  { key: 'sectores', plural: 'sectores' },
+  { key: 'canales', plural: 'canales' },
+  { key: 'categorias', plural: 'categorías' },
+  { key: 'tipos', plural: 'tipos' },
+]
 
 function valorDescuento(d: Descuento): string {
   if (d.pct !== null) return pct(d.pct)
@@ -78,22 +84,25 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
       canales: valoresUnicos(items, 'canal'),
       categorias: valoresUnicos(items, 'categoriaGrupo'),
       tipos: valoresUnicos(items, 'tipo'),
+      sectores: valoresUnicos(items, 'sector'),
     }),
     [items],
   )
   const [guardados, setGuardados] = useState<FiltrosGuardados>(() => {
-    const sinEspacios = (s: string) => norm(s).replace(/\s/g, '')
-    const def: FiltrosGuardados = { ...SIN_FILTROS, zonas: opciones.zonas.filter((z) => sinEspacios(z) === sinEspacios(ZONA_POR_DEFECTO)) }
+    const def: FiltrosGuardados = { ...SIN_FILTROS, zonas: zonasPorDefecto(opciones.zonas) }
     // Completa con los valores por defecto los campos que no existían en filtros guardados antiguos.
     return { ...def, ...prefLeer<Partial<FiltrosGuardados>>('filtros', {}) }
   })
   // Solo valores que existen en el Excel actual (un filtro viejo no debe vaciar la lista sin aviso).
+  const vigentes = (key: keyof FiltrosGuardados) => guardados[key].filter((x) => opciones[key].includes(x))
   const filtros: FiltrosGuardados = {
-    tarjetas: guardados.tarjetas.filter((x) => opciones.tarjetas.includes(x)),
-    zonas: guardados.zonas.filter((x) => opciones.zonas.includes(x)),
-    canales: guardados.canales.filter((x) => opciones.canales.includes(x)),
-    categorias: guardados.categorias.filter((x) => opciones.categorias.includes(x)),
-    tipos: guardados.tipos.filter((x) => opciones.tipos.includes(x)),
+    tarjetas: vigentes('tarjetas'),
+    // Si el Excel cambió sus zonas y ninguna guardada existe, se vuelve a la zona por defecto.
+    zonas: guardados.zonas.length > 0 && vigentes('zonas').length === 0 ? zonasPorDefecto(opciones.zonas) : vigentes('zonas'),
+    canales: vigentes('canales'),
+    categorias: vigentes('categorias'),
+    tipos: vigentes('tipos'),
+    sectores: vigentes('sectores'),
   }
   useEffect(() => prefGuardar('filtros', guardados), [guardados])
 
@@ -102,14 +111,31 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
   const [abrirFiltros, setAbrirFiltros] = useState(false)
   const fecha = addDays(hoy, offset)
   const { aplican, revisar } = descuentosDelDia(items, fecha, { ...filtros, texto })
-  // Tipos de comida con descuento ese día (con el resto de los filtros aplicados), para los chips rápidos.
-  const conteoTipos = new Map<string, number>()
-  for (const d of descuentosDelDia(items, fecha, { ...filtros, tipos: [], texto }).aplican) if (d.tipo) conteoTipos.set(d.tipo, (conteoTipos.get(d.tipo) ?? 0) + 1)
-  const tiposDelDia = opciones.tipos.filter((t) => conteoTipos.has(t) || filtros.tipos.includes(t)).map((t) => ({ tipo: t, n: conteoTipos.get(t) ?? 0 }))
+  // Chips rápidos: categorías y, al elegir una, sus subcategorías; solo las que tienen descuento ese día.
+  const contar = (ds: Descuento[], key: 'categoriaGrupo' | 'tipo', valores: string[], elegidos: string[]) => {
+    const n = new Map<string, number>()
+    for (const d of ds) if (d[key]) n.set(d[key], (n.get(d[key]) ?? 0) + 1)
+    return valores.filter((v) => n.has(v) || elegidos.includes(v)).map((v) => ({ valor: v, n: n.get(v) ?? 0 }))
+  }
+  const catsDelDia = contar(descuentosDelDia(items, fecha, { ...filtros, categorias: [], tipos: [], texto }).aplican, 'categoriaGrupo', opciones.categorias, filtros.categorias)
+  const tiposDelDia = contar(descuentosDelDia(items, fecha, { ...filtros, tipos: [], texto }).aplican, 'tipo', opciones.tipos, filtros.tipos)
+  const mostrarTipos = filtros.categorias.length > 0 || filtros.tipos.length > 0
+  // Tocar una categoría la deja como única elegida (o la quita) y limpia las subcategorías.
+  const elegirCategoria = (c: string) =>
+    setGuardados({ ...filtros, categorias: filtros.categorias.length === 1 && filtros.categorias[0] === c ? [] : [c], tipos: [] })
   const toggleTipo = (t: string) =>
     setGuardados({ ...filtros, tipos: filtros.tipos.includes(t) ? filtros.tipos.filter((x) => x !== t) : [...filtros.tipos, t] })
 
-  const nFiltros = filtros.tarjetas.length + filtros.zonas.length + filtros.canales.length + filtros.categorias.length + filtros.tipos.length
+  const nFiltros = GRUPOS.filter((g) => filtros[g.key].length > 0).length
+  const resumenFiltros = GRUPOS.filter((g) => filtros[g.key].length > 0)
+    .map((g) => {
+      const sel = filtros[g.key]
+      if (sel.length <= 2) return sel.join(', ')
+      // Muchos elegidos y pocos fuera: se dice lo que queda fuera ("sin Regiones").
+      const fuera = opciones[g.key].filter((v) => !sel.includes(v))
+      return fuera.length > 0 && fuera.length <= 2 ? `sin ${fuera.join(', ')}` : `${sel.length} ${g.plural}`
+    })
+    .join(' · ')
   // Chips de los próximos 7 días, partiendo por hoy.
   const dias = [0, 1, 2, 3, 4, 5, 6].map((off) => {
     const f = addDays(hoy, off)
@@ -156,24 +182,31 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
       </div>
       {nFiltros > 0 && (
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Filtrando: {[...filtros.tarjetas, ...filtros.zonas, ...filtros.canales, ...filtros.categorias, ...filtros.tipos].join(' · ')}
+          Filtrando: {resumenFiltros}
         </p>
       )}
 
-      {tiposDelDia.length > 0 && (
-        <div className="-mx-4 mt-3">
-          <div className="px-4 text-xs font-semibold text-slate-500 dark:text-slate-400">Tipo de comida</div>
-          <div className="mt-1 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Tipo de comida">
-            <Chip active={filtros.tipos.length === 0} onClick={() => setGuardados({ ...filtros, tipos: [] })} className="min-h-10 px-3">
-              Todos
-            </Chip>
-            {tiposDelDia.map(({ tipo, n }) => (
-              <Chip key={tipo} active={filtros.tipos.includes(tipo)} onClick={() => toggleTipo(tipo)} className="min-h-10 whitespace-nowrap px-3">
-                {conEmoji(tipo)} <span className="opacity-60">{n}</span>
-              </Chip>
-            ))}
-          </div>
-        </div>
+      {catsDelDia.length > 0 && (
+        <FilaChips
+          titulo="Categoría"
+          todos={filtros.categorias.length === 0}
+          onTodos={() => setGuardados({ ...filtros, categorias: [], tipos: [] })}
+          valores={catsDelDia}
+          activos={filtros.categorias}
+          etiqueta={conEmojiCategoria}
+          onToggle={elegirCategoria}
+        />
+      )}
+      {mostrarTipos && tiposDelDia.length > 0 && (
+        <FilaChips
+          titulo="Tipo"
+          todos={filtros.tipos.length === 0}
+          onTodos={() => setGuardados({ ...filtros, tipos: [] })}
+          valores={tiposDelDia}
+          activos={filtros.tipos}
+          etiqueta={conEmoji}
+          onToggle={toggleTipo}
+        />
       )}
 
       <p className="mt-4 mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -202,9 +235,10 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
       <Sheet open={abrirFiltros} onClose={() => setAbrirFiltros(false)} titulo="Filtros">
         <GrupoFiltro titulo="Tarjeta" valores={opciones.tarjetas} sel={filtros.tarjetas} onChange={(v) => setGuardados({ ...filtros, tarjetas: v })} />
         <GrupoFiltro titulo="Zona" valores={opciones.zonas} sel={filtros.zonas} onChange={(v) => setGuardados({ ...filtros, zonas: v })} />
+        <GrupoFiltro titulo="Sector" valores={opciones.sectores} sel={filtros.sectores} onChange={(v) => setGuardados({ ...filtros, sectores: v })} />
         <GrupoFiltro titulo="Canal" valores={opciones.canales} sel={filtros.canales} onChange={(v) => setGuardados({ ...filtros, canales: v })} />
-        <GrupoFiltro titulo="Categoría" valores={opciones.categorias} sel={filtros.categorias} onChange={(v) => setGuardados({ ...filtros, categorias: v })} />
-        <GrupoFiltro titulo="Tipo de comida" valores={opciones.tipos} sel={filtros.tipos} onChange={(v) => setGuardados({ ...filtros, tipos: v })} etiqueta={conEmoji} />
+        <GrupoFiltro titulo="Categoría" valores={opciones.categorias} sel={filtros.categorias} onChange={(v) => setGuardados({ ...filtros, categorias: v })} etiqueta={conEmojiCategoria} />
+        <GrupoFiltro titulo="Tipo / subcategoría" valores={opciones.tipos} sel={filtros.tipos} onChange={(v) => setGuardados({ ...filtros, tipos: v })} etiqueta={conEmoji} />
         <div className="sticky bottom-0 flex gap-2 bg-white py-3 dark:bg-slate-900">
           <button type="button" className="min-h-12 flex-1 rounded-xl border border-slate-300 font-semibold dark:border-slate-700" onClick={() => setGuardados(SIN_FILTROS)}>
             Limpiar
@@ -214,6 +248,40 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
           </button>
         </div>
       </Sheet>
+    </div>
+  )
+}
+
+function FilaChips({
+  titulo,
+  todos,
+  onTodos,
+  valores,
+  activos,
+  etiqueta,
+  onToggle,
+}: {
+  titulo: string
+  todos: boolean
+  onTodos: () => void
+  valores: { valor: string; n: number }[]
+  activos: string[]
+  etiqueta: (v: string) => string
+  onToggle: (v: string) => void
+}) {
+  return (
+    <div className="-mx-4 mt-3">
+      <div className="px-4 text-xs font-semibold text-slate-500 dark:text-slate-400">{titulo}</div>
+      <div className="mt-1 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={titulo}>
+        <Chip active={todos} onClick={onTodos} className="min-h-10 px-3">
+          Todas
+        </Chip>
+        {valores.map(({ valor, n }) => (
+          <Chip key={valor} active={activos.includes(valor)} onClick={() => onToggle(valor)} className="min-h-10 whitespace-nowrap px-3">
+            {etiqueta(valor)} <span className="opacity-60">{n}</span>
+          </Chip>
+        ))}
+      </div>
     </div>
   )
 }
@@ -265,7 +333,11 @@ function TarjetaDescuento({ d, onClick }: { d: Descuento; onClick: () => void })
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {d.tarjeta && <Etiqueta className={colorTarjeta(d.tarjeta)}>{d.tarjeta}</Etiqueta>}
             {d.tipo && norm(d.tipo) !== 'por confirmar' && <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{conEmoji(d.tipo)}</span>}
-            {d.comuna && <span className="text-xs text-slate-500 dark:text-slate-400">{d.comuna}</span>}
+            {(d.comuna || d.sector) && (
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {[d.comuna, d.sector].filter((x, i, xs) => x && (i === 0 || norm(x) !== norm(xs[0]))).join(' · ')}
+              </span>
+            )}
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{textoTope(d)}</div>
           {d.dia === 'especificas' && d.fechaEspecifica && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">📅 {d.fechaEspecifica}</div>}
@@ -291,9 +363,10 @@ function DetalleDescuento({ d, onClose }: { d: Descuento | null; onClose: () => 
     ['Vigencia', d.vigencia],
     ['Canal', d.canal],
     ['Comuna / región', d.comuna],
+    ['Sector', d.sector],
     ['Zona', d.zona],
-    ['Categoría', d.categoria],
-    ['Tipo de comida', conEmoji(d.tipo)],
+    ['Categoría', conEmojiCategoria(d.categoria)],
+    ['Tipo / subcategoría', conEmoji(d.tipo)],
     ['Verificación', d.verificacion],
   ]
   return (

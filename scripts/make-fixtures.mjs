@@ -120,7 +120,7 @@ async function cuentasVariante() {
   await wb.xlsx.writeFile(join(out, 'cuentas-variante.xlsx'))
 }
 
-async function descuentos() {
+async function descuentos(archivo = 'descuentos.xlsx', tipoHeader = 'Tipo / subcategoría') {
   const wb = new ExcelJS.Workbook()
   const res = wb.addWorksheet('Resumen')
   res.getCell('A1').value = 'Descuentos de octubre 2026'
@@ -131,23 +131,24 @@ async function descuentos() {
   pd.getRow(2).values = [
     'Día', 'Fecha específica', '% dcto.', 'Monto fijo', 'Tope ($)', 'Tipo de tope', 'Tarjeta', 'Comercio', 'Categoría',
     'Comuna / región', 'Zona', 'Canal', 'Tarjetas que aplican', 'Vigencia', 'Condiciones', 'Verificación', 'Fuente',
-    // Columna agregada después: queda al final para probar que se mapea por nombre.
-    'Tipo de restaurante',
+    // Columnas agregadas después: quedan al final para probar que se mapean por nombre.
+    tipoHeader,
+    'Sector',
   ]
   const link = (n) => ({ text: 'Ver ficha', hyperlink: `https://example.com/ficha/${n}` })
   const filas = [
-    ['Lunes', '', 0.4, null, 30000, 'Por transacción', 'Banco Alfa', 'Restorán Uno', 'Restaurante – Sabores 40% Alfa', 'Providencia', 'RM / online', 'Presencial', 'Alfa Visa, Alfa MC', 'Octubre', 'Solo lunes', 'Revisado', link(1)],
-    ['Lunes', '', 0.2, null, 15000, 'Mensual', 'Banco Beta', 'Restorán Uno', 'Restaurante – Beta', 'Providencia', 'RM / online', 'Presencial', 'Beta Visa', 'Octubre', '', 'Revisado', link(2)],
-    ['Miércoles', '', 0.4, null, 20000, 'Por transacción', 'Banco Alfa', 'Restorán Uno', 'Restaurante – Sabores 40% Alfa', 'Providencia', 'RM / online', 'Presencial', 'Alfa Visa', 'Octubre', '', 'Revisado', link(3)],
-    ['Martes', '', 0.25, null, null, 'Sin tope', 'Banco Beta', 'Café Ñandú', 'Cafetería', 'Ñuñoa', 'RM / online', 'Presencial', 'Beta Visa', 'Octubre', '', 'Revisado', link(4)],
+    ['Lunes', '', 0.4, null, 30000, 'Por transacción', 'Banco Alfa', 'Restorán Uno', 'Restaurante – Sabores 40% Alfa', 'Providencia', 'RM', 'Presencial', 'Alfa Visa, Alfa MC', 'Octubre', 'Solo lunes', 'Revisado', link(1)],
+    ['Lunes', '', 0.2, null, 15000, 'Mensual', 'Banco Beta', 'Restorán Uno', 'Restaurante – Beta', 'Providencia', 'RM', 'Presencial', 'Beta Visa', 'Octubre', '', 'Revisado', link(2)],
+    ['Miércoles', '', 0.4, null, 20000, 'Por transacción', 'Banco Alfa', 'Restorán Uno', 'Restaurante – Sabores 40% Alfa', 'Providencia', 'RM', 'Presencial', 'Alfa Visa', 'Octubre', '', 'Revisado', link(3)],
+    ['Martes', '', 0.25, null, null, 'Sin tope', 'Banco Beta', 'Café Ñandú', 'Cafetería', 'Ñuñoa', 'RM', 'Presencial', 'Beta Visa', 'Octubre', '', 'Revisado', link(4)],
     ['Todos los días', '', 0.1, null, null, 'Sin tope', 'Banco Gamma', 'Farmacia Ávila', 'Salud – Farmacias', 'Concepción', 'Regiones', 'Presencial', 'Gamma Débito', 'Octubre', '', 'Revisado', link(5)],
-    ['Fechas específicas', '05 al 11 oct', 0.3, null, 10000, 'Por transacción', 'Banco Alfa', 'Librería Prueba', 'Libros', 'Santiago', 'RM / online', 'Online', 'Alfa Visa', '05 al 11 oct', '', 'Revisado', link(6)],
-    ['Fechas específicas', '06, 13, 20 y 27 oct', 0.5, null, 25000, 'Por transacción', 'Banco Beta', 'Sushi Test', 'Restaurante – Sushi', 'Las Condes', 'RM / online', 'Delivery', 'Beta Visa', 'Martes de octubre', '', 'Revisado', null],
+    ['Fechas específicas', '05 al 11 oct', 0.3, null, 10000, 'Por transacción', 'Banco Alfa', 'Librería Prueba', 'Libros', 'Santiago', 'Online', 'Online', 'Alfa Visa', '05 al 11 oct', '', 'Revisado', link(6)],
+    ['Fechas específicas', '06, 13, 20 y 27 oct', 0.5, null, 25000, 'Por transacción', 'Banco Beta', 'Sushi Test', 'Restaurante – Sushi', 'Las Condes', 'RM + online', 'Delivery', 'Beta Visa', 'Martes de octubre', '', 'Revisado', null],
     ['Fechas específicas', 'fin de semana largo', 0.2, null, null, '', 'Banco Gamma', 'Hotel Imaginario', 'Viajes', 'Pucón', 'Regiones', 'Online', 'Gamma Crédito', '', '', 'Revisado', link(8)],
-    ['Miércoles', '', null, 5000, null, 'Por transacción', 'Banco Beta', 'Bencina Demo', 'Combustible – Descuento fijo', 'Maipú', 'RM / online', 'Presencial', 'Beta Visa', 'Octubre', 'Pago con app', 'Revisado', link(9)],
-    ['Feriado', '', 0.15, null, null, '', 'Banco Alfa', 'Comercio Raro', 'Otros', '', 'RM / online', '', '', '', '', '', null],
-    ['Jueves', '', 0.35, null, 12000, 'Mensual', 'Banco Alfa', 'Pizzería Falsa', 'Restaurante – Pizzas', 'Providencia', 'RM / online', 'Presencial', 'Por confirmar', 'Octubre', '', 'Revisado', { formula: 'HYPERLINK("https://example.com/ficha/11","Ver ficha")', result: 'Ver ficha' }],
-    ['Viernes', '', 0.15, null, null, '', 'Banco Gamma', 'Heladería Ficticia', 'Postres', 'Ñuñoa', 'RM / online', 'Presencial', 'Gamma Débito', 'Octubre', '', 'Pendiente', link(12)],
+    ['Miércoles', '', null, 5000, null, 'Por transacción', 'Banco Beta', 'Bencina Demo', 'Combustible – Descuento fijo', 'Maipú', 'RM', 'Presencial', 'Beta Visa', 'Octubre', 'Pago con app', 'Revisado', link(9)],
+    ['Feriado', '', 0.15, null, null, '', 'Banco Alfa', 'Comercio Raro', 'Otros', '', 'RM', '', '', '', '', '', null],
+    ['Jueves', '', 0.35, null, 12000, 'Mensual', 'Banco Alfa', 'Pizzería Falsa', 'Restaurante – Pizzas', 'Providencia', 'RM', 'Presencial', 'Por confirmar', 'Octubre', '', 'Revisado', { formula: 'HYPERLINK("https://example.com/ficha/11","Ver ficha")', result: 'Ver ficha' }],
+    ['Viernes', '', 0.15, null, null, '', 'Banco Gamma', 'Heladería Ficticia', 'Postres', 'Ñuñoa', 'RM', 'Presencial', 'Gamma Débito', 'Octubre', '', 'Pendiente', link(12)],
   ]
   filas.forEach((v) => pd.addRow(v))
   // Tipo de restaurante (columna R): Restorán Uno = Italiano, Sushi Test = Sushi y nikkei, Pizzería Falsa = Pizzería.
@@ -155,6 +156,10 @@ async function descuentos() {
   pd.getCell('R9').value = 'Sushi y nikkei'
   pd.getCell('R13').value = 'Pizzería'
   pd.getCell('R6').value = 'Por confirmar'
+  // Sector (columna S).
+  ;['S3', 'S4', 'S5', 'S6', 'S13'].forEach((c) => (pd.getCell(c).value = 'Providencia–Ñuñoa'))
+  pd.getCell('S9').value = 'Oriente'
+  pd.getCell('S7').value = 'Región de Biobío'
   // Fila de Pizzería: "Tarjetas que aplican" en amarillo ARGB; Heladería: "Verificación" amarillo de tema.
   pd.getCell('M13').fill = AMARILLO
   pd.getCell('P14').fill = AMARILLO_TEMA
@@ -167,7 +172,7 @@ async function descuentos() {
   const files = unzipSync(new Uint8Array(await wb.xlsx.writeBuffer()))
   const theme = 'xl/theme/theme1.xml'
   files[theme] = strToU8(strFromU8(files[theme]).replace(/(<a:accent4>\s*<a:srgbClr val=")[0-9A-F]{6}/, '$1FFC000'))
-  writeFileSync(join(out, 'descuentos.xlsx'), zipSync(files))
+  writeFileSync(join(out, archivo), zipSync(files))
 }
 
 async function otro() {
@@ -176,5 +181,6 @@ async function otro() {
   await wb.xlsx.writeFile(join(out, 'otro.xlsx'))
 }
 
-await Promise.all([cuentas(), cuentasVariante(), descuentos(), otro()])
+// La variante usa el nombre de columna anterior ("Tipo de restaurante").
+await Promise.all([cuentas(), cuentasVariante(), descuentos(), descuentos('descuentos-v2.xlsx', 'Tipo de restaurante'), otro()])
 console.log(`Fixtures sintéticos generados en ${out}`)

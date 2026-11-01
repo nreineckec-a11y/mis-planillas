@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { esAmarillo, grupoCategoria, parsePeriodo, parseDescuentos } from '../src/lib/descuentos/parse'
 import { parseFechasEspecificas } from '../src/lib/descuentos/fechas'
-import { comerciosQueCalzan, descuentosDelDia, FILTROS_VACIOS, tablaComercio, valoresUnicos } from '../src/lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDelDia, FILTROS_VACIOS, tablaComercio, valoresUnicos, zonasPorDefecto } from '../src/lib/descuentos/filtros'
 import { libro } from './helpers'
 
 const { datos, advertencias } = parseDescuentos(libro('descuentos.xlsx'), 2026)
@@ -97,7 +97,7 @@ describe('vista Hoy', () => {
 
   it('filtros por tarjeta, zona y búsqueda sin tildes', () => {
     const base = { y: 2026, m: 10, d: 6 }
-    expect(nombres(base, { ...FILTROS_VACIOS, zonas: ['RM / online'] }).aplican).not.toContain('Farmacia Ávila|Banco Gamma')
+    expect(nombres(base, { ...FILTROS_VACIOS, zonas: zonasPorDefecto(valoresUnicos(datos.items, 'zona')) }).aplican).not.toContain('Farmacia Ávila|Banco Gamma')
     expect(nombres(base, { ...FILTROS_VACIOS, tarjetas: ['Banco Beta'] }).aplican).toEqual(['Sushi Test|Banco Beta', 'Café Ñandú|Banco Beta'])
     expect(nombres(base, { ...FILTROS_VACIOS, texto: 'nandu' }).aplican).toEqual(['Café Ñandú|Banco Beta'])
     expect(nombres(base, { ...FILTROS_VACIOS, texto: 'concepcion' }).aplican).toEqual(['Farmacia Ávila|Banco Gamma'])
@@ -139,5 +139,34 @@ describe('tipo de restaurante', () => {
   it('archivos sin la columna siguen funcionando', () => {
     const r = parseDescuentos(libro('descuentos.xlsx'), 2026)
     expect(r.advertencias.some((a) => a.mensaje.includes('Tipo'))).toBe(false)
+  })
+})
+
+describe('subcategoría, sector y zonas (estructura de noviembre)', () => {
+  it('lee "Tipo / subcategoría" y también el nombre anterior "Tipo de restaurante"', () => {
+    const v2 = parseDescuentos(libro('descuentos-v2.xlsx'), 2026).datos
+    expect(v2.items.find((d) => d.comercio === 'Pizzería Falsa')!.tipo).toBe('Pizzería')
+    expect(porComercio('Pizzería Falsa').tipo).toBe('Pizzería')
+  })
+
+  it('lee el sector, filtra por él y lo encuentra al buscar', () => {
+    expect(porComercio('Sushi Test').sector).toBe('Oriente')
+    expect(porComercio('Bencina Demo').sector).toBe('')
+    const martes = { y: 2026, m: 10, d: 6 }
+    const sel = (f: Partial<typeof FILTROS_VACIOS>) => descuentosDelDia(datos.items, martes, { ...FILTROS_VACIOS, ...f }).aplican.map((d) => d.comercio)
+    expect(sel({ sectores: ['Providencia–Ñuñoa'] })).toEqual(['Café Ñandú'])
+    expect(sel({ texto: 'oriente' })).toEqual(['Sushi Test'])
+    expect(sel({ texto: 'biobio' })).toEqual(['Farmacia Ávila'])
+  })
+
+  it('zona por defecto: todas menos Regiones', () => {
+    expect(zonasPorDefecto(['Online', 'Regiones', 'RM', 'RM + online', 'Todo Chile', 'Todo Chile + online'])).toEqual([
+      'Online',
+      'RM',
+      'RM + online',
+      'Todo Chile',
+      'Todo Chile + online',
+    ])
+    expect(zonasPorDefecto(valoresUnicos(datos.items, 'zona'))).toEqual(['Online', 'RM', 'RM + online'])
   })
 })

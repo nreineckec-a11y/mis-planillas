@@ -65,14 +65,16 @@ try {
     await page.getByRole('button', { name: /^Filtros/ }).click()
     await shot('05-filtros')
     await page.getByRole('button', { name: /^Ver \d/ }).click()
-    // Chips de tipo de comida.
-    await page.getByRole('group', { name: 'Tipo de comida' }).getByRole('button', { name: /Sushi y nikkei/ }).click()
+    // Chips de categoría y, al elegir una, sus subcategorías.
+    await page.getByRole('group', { name: 'Categoría' }).getByRole('button', { name: /Restaurante/ }).click()
+    await page.getByRole('group', { name: 'Tipo' }).getByRole('button', { name: /Sushi y nikkei/ }).click()
     await page.waitForTimeout(300) // deja terminar la transición de color de los chips
-    if ((await page.getByRole('group', { name: 'Tipo de comida' }).getByRole('button', { name: /Sushi y nikkei/ }).getAttribute('aria-pressed')) !== 'true')
-      errores.push('el chip de tipo de comida no quedó activo')
-    if ((await page.getByText(/^\d+ descuentos?$/).innerText()) !== '1 descuento') errores.push('el filtro por tipo no filtró')
+    if ((await page.getByRole('group', { name: 'Tipo' }).getByRole('button', { name: /Sushi y nikkei/ }).getAttribute('aria-pressed')) !== 'true')
+      errores.push('el chip de subcategoría no quedó activo')
+    if ((await page.getByText(/^\d+ descuentos?$/).innerText()) !== '1 descuento') errores.push('el filtro por subcategoría no filtró')
     await shot('17-tipo-comida')
-    await page.getByRole('group', { name: 'Tipo de comida' }).getByRole('button', { name: 'Todos' }).click()
+    await page.getByRole('group', { name: 'Categoría' }).getByRole('button', { name: 'Todas' }).click()
+    if (await page.getByRole('group', { name: 'Tipo' }).count()) errores.push('la fila de subcategorías no se ocultó al quitar la categoría')
     await page.getByRole('button', { name: 'Buscar comercio' }).click()
     await page.getByPlaceholder(/^Comercio, comuna o tipo/).fill('italia')
     await page.getByRole('button', { name: /^Restorán Uno/ }).click()
@@ -173,7 +175,7 @@ try {
       await envejecer(false)
       await page.goto(`${ORIGEN}/#/descuentos`)
       await page.reload()
-      await page.getByRole('group', { name: 'Tipo de comida' }).waitFor({ timeout: 5000 })
+      await page.getByRole('group', { name: 'Categoría' }).waitFor({ timeout: 5000 })
       if (await page.getByText('La app se actualizó.').count()) errores.push('aviso de actualizar visible aunque se pudo releer')
       // b) Sin copia (datos de la versión anterior): aviso para cargar el Excel una vez.
       await envejecer(true)
@@ -182,7 +184,7 @@ try {
       await shot('18-aviso-actualizar')
       await page.locator('input[type=file]').first().setInputFiles(['tests/fixtures/descuentos.xlsx'])
       await page.getByRole('button', { name: 'Listo' }).click()
-      await page.getByRole('group', { name: 'Tipo de comida' }).waitFor({ timeout: 5000 })
+      await page.getByRole('group', { name: 'Categoría' }).waitFor({ timeout: 5000 })
       if (await page.getByText('La app se actualizó.').count()) errores.push('el aviso no desapareció tras cargar el Excel')
     }
     await ctx.close()

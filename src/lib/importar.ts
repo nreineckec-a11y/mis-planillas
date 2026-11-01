@@ -64,5 +64,5 @@ export function desactualizado(r: Registro): boolean {
 /** Completa campos agregados en versiones nuevas para registros guardados con una versión anterior. */
 export function normalizarRegistro(r: Registro): Registro {
   if (r.tipo !== 'descuentos') return r
-  return { ...r, datos: { ...r.datos, items: r.datos.items.map((d) => ({ ...d, tipo: d.tipo ?? '' })) } }
+  return { ...r, datos: { ...r.datos, items: r.datos.items.map((d) => ({ ...d, tipo: d.tipo ?? '', sector: d.sector ?? '' })) } }
 }

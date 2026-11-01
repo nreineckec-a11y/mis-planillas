@@ -44,9 +44,13 @@ Estos cambios se guardan en el teléfono **aparte del Excel**, así que no se pi
 - Un cambio de estado se considera anotado si la fila del Excel ya tiene ese estado.
 - Si editaste la fila en el Excel y la app ya no la encuentra, te avisa para que revises y deshagas el cambio.
 
-## Descuentos: tipo de comida
+## Descuentos: categorías, subcategorías y sector
 
-Si la hoja `Por día` trae la columna **Tipo de restaurante** (Pizzería, Italiano, Sushi y nikkei…), la app muestra chips de tipo de comida bajo el buscador (solo los que tienen descuento ese día) y un filtro "Tipo de comida". El buscador también encuentra por tipo ("pizza", "nikkei"), tanto en **Por día** como en **Buscar comercio**. La columna es opcional.
+Bajo el buscador hay chips de **categoría** (🍽️ Restaurantes, 🛵 Delivery, 👕 Ropa…); al tocar una aparecen sus **subcategorías** (🍕 Pizzería, 🍣 Sushi y nikkei, 👟 Calzado…). Solo se muestran las que tienen descuento ese día, con su cantidad. En **Filtros** también están Categoría, Tipo / subcategoría y **Sector**. El buscador encuentra por comercio, comuna, sector o subcategoría ("pizza", "oriente").
+
+Columnas opcionales que lee la app: `Tipo / subcategoría` (también acepta el nombre anterior `Tipo de restaurante`) y `Sector`. Los emojis se asignan por palabras clave (`src/lib/descuentos/emoji.ts`), así que valores nuevos reciben uno razonable (🏷️ si no calza ninguno).
+
+La zona por defecto muestra todas las zonas menos "Regiones".
 
 ## Correr en local
 
@@ -85,7 +89,7 @@ Cuando publiques una versión nueva, la app se actualiza sola la próxima vez qu
 
 ### Descuentos
 
-Solo la hoja `Por día` (incluida la columna opcional `Tipo de restaurante`). El mes del set sale del título en `Resumen!A1` (ej. "Descuentos de octubre 2026"). Si el mes no coincide con el actual, la app avisa.
+Solo la hoja `Por día` (incluidas las columnas opcionales `Tipo / subcategoría` y `Sector`). El mes del set sale del título en `Resumen!A1` (ej. "Descuentos de octubre 2026"). Si el mes no coincide con el actual, la app avisa.
 
 Las celdas con relleno amarillo (`FFF2CC` o cualquier amarillo claro, incluso elegido desde la paleta de tema) en "Tarjetas que aplican" o "Verificación" marcan el descuento con ⚠︎.
 

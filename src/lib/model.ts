@@ -94,9 +94,11 @@ export interface Descuento {
   comercio: string
   categoria: string
   categoriaGrupo: string
-  /** "Tipo de restaurante" (Pizzería, Italiano…); '' si no viene. */
+  /** "Tipo / subcategoría" (Pizzería, Calzado, Óptica…); '' si no viene. */
   tipo: string
   comuna: string
+  /** Sector (Oriente, Centro, Región de Biobío…); '' si no viene. */
+  sector: string
   zona: string
   canal: string
   tarjetasAplican: string
@@ -121,9 +123,9 @@ export const SCHEMA = 1
  * Versión de la lectura de cada Excel. Subir la del tipo cuyo parser aprenda a
  * leer algo nuevo: al abrir la app, ese Excel se vuelve a leer solo desde la
  * copia guardada. Solo se sube la del Excel afectado, para no pedir el otro.
- * Descuentos 2 = "Tipo de restaurante".
+ * Descuentos 2 = "Tipo de restaurante"; 3 = "Tipo / subcategoría" y "Sector".
  */
-export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 2 }
+export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 3 }
 
 interface RegistroBase {
   schema: number
