@@ -1,7 +1,7 @@
 // Genera Excel SINTÉTICOS para los tests (nombres y montos inventados).
 // Uso: node scripts/make-fixtures.mjs [carpeta]   (por defecto tests/fixtures)
 import ExcelJS from 'exceljs'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate'
 import { join } from 'node:path'
 
@@ -135,6 +135,7 @@ async function descuentos(archivo = 'descuentos.xlsx', tipoHeader = 'Tipo / subc
     tipoHeader,
     'Sector',
     'Foto',
+    'Miniatura',
   ]
   const link = (n) => ({ text: 'Ver ficha', hyperlink: `https://example.com/ficha/${n}` })
   const filas = [
@@ -167,6 +168,11 @@ async function descuentos(archivo = 'descuentos.xlsx', tipoHeader = 'Tipo / subc
   pd.getCell('T13').value = { formula: 'IMAGE("https://fotos.test/pizza.png")' }
   pd.getCell('T9').value = 'https://fotos.test/roto.png'
   pd.getCell('T6').value = 'http://fotos.test/inseguro.png'
+  pd.getCell('U7').value = 'https://fotos.test/farmacia-chica.png'
+  // Foto incrustada (como "Insertar imagen"), la misma en dos filas: Café Ñandú y Bencina Demo.
+  const imagen = wb.addImage({ buffer: readFileSync('public/icon-192.png'), extension: 'png' })
+  pd.addImage(imagen, { tl: { col: 19, row: 5 }, ext: { width: 40, height: 40 } })
+  pd.addImage(imagen, { tl: { col: 19, row: 10 }, ext: { width: 40, height: 40 } })
   // Fila de Pizzería: "Tarjetas que aplican" en amarillo ARGB; Heladería: "Verificación" amarillo de tema.
   pd.getCell('M13').fill = AMARILLO
   pd.getCell('P14').fill = AMARILLO_TEMA

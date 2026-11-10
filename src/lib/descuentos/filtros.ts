@@ -1,5 +1,5 @@
 import { weekday, type Ymd } from '../dates'
-import type { Descuento } from '../model'
+import type { DatosDescuentos, Descuento } from '../model'
 import { norm } from '../text'
 
 export interface Filtros {
@@ -121,4 +121,12 @@ export function tablaComercio(items: Descuento[], comercio: string): TablaComerc
   }
   const tarjetas = Object.keys(celdas).sort((a, b) => a.localeCompare(b, 'es'))
   return { tarjetas, celdas, especificas: especificas.sort(compararDescuentos) }
+}
+
+/** Reemplaza "img:<clave>" por la foto incrustada correspondiente (sin copiarla). */
+export function resolverFotos(datos: DatosDescuentos): Descuento[] {
+  const imgs = datos.imagenes
+  if (!imgs) return datos.items
+  const r = (u: string | null) => (u?.startsWith('img:') ? (imgs[u.slice(4)] ?? null) : u)
+  return datos.items.map((d) => (d.foto?.startsWith('img:') || d.miniatura?.startsWith('img:') ? { ...d, foto: r(d.foto), miniatura: r(d.miniatura) } : d))
 }

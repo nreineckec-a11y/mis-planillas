@@ -56,9 +56,12 @@ La zona por defecto muestra todas las zonas menos "Regiones".
 
 ### Fotos de los locales
 
-Si la hoja `Por día` trae una columna **`Foto`** (también `Imagen` o `Foto del local`) con el enlace `https://` a una imagen, la app muestra una miniatura en cada descuento y la foto grande en el detalle y en "Buscar comercio". Sirve el enlace como texto, como hipervínculo o con la función de Excel `=IMAGEN("https://…")`. Si un descuento no tiene foto, o el enlace no carga, se muestra el emoji de su tipo.
+La app muestra una miniatura en cada descuento y la foto grande en el detalle y en "Buscar comercio". Si un descuento no tiene foto, o no carga, se muestra el emoji de su tipo. Se pueden desactivar en Ajustes → "Mostrar fotos de los locales".
 
-Las fotos se descargan desde el sitio del enlace (ese sitio ve que se pidió la imagen, no los datos del Excel) y las ya vistas quedan guardadas para verlas sin conexión. Se pueden desactivar en Ajustes → "Mostrar fotos de los locales".
+Dos formas de traer fotos en la hoja `Por día`:
+
+1. **Recomendada: foto incrustada.** Insertar la imagen en la celda de la columna **`Foto`** de su fila (Insertar → Imagen, o `ws.add_image()` con openpyxl, anclada a esa celda). La app la lee del archivo: funciona sin conexión y no pide nada a ningún sitio. Si la misma foto se repite en varias filas, se guarda una sola vez. Conviene reducirlas a ~360 px de ancho (≈25 KB cada una).
+2. **Enlace `https://`** en la columna `Foto` (texto, hipervínculo o `=IMAGEN("https://…")`), y opcionalmente una versión liviana en `Miniatura`. Ojo: muchos sitios de bancos protegen sus imágenes contra robots y en el iPhone no cargan desde otra app; por eso la opción 1 es la confiable. Las fotos por enlace que sí cargan quedan guardadas para verlas sin conexión (el sitio ve que se pidió la imagen, no los datos del Excel).
 
 ## Correr en local
 

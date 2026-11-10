@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { esAmarillo, grupoCategoria, parsePeriodo, parseDescuentos } from '../src/lib/descuentos/parse'
+import { esAmarillo, grupoCategoria, parsePeriodo, parseDescuentos, urlFoto } from '../src/lib/descuentos/parse'
 import { parseFechasEspecificas } from '../src/lib/descuentos/fechas'
-import { comerciosQueCalzan, descuentosDelDia, FILTROS_VACIOS, tablaComercio, valoresUnicos, zonasPorDefecto } from '../src/lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDelDia, FILTROS_VACIOS, resolverFotos, tablaComercio, valoresUnicos, zonasPorDefecto } from '../src/lib/descuentos/filtros'
 import { libro } from './helpers'
 
 const { datos, advertencias } = parseDescuentos(libro('descuentos.xlsx'), 2026)
@@ -176,7 +176,23 @@ describe('fotos de los locales', () => {
     expect(porComercio('Restorán Uno').foto).toBe('https://fotos.test/restoran.png')
     expect(porComercio('Farmacia Ávila').foto).toBe('https://fotos.test/farmacia.png')
     expect(porComercio('Pizzería Falsa').foto).toBe('https://fotos.test/pizza.png')
-    expect(porComercio('Café Ñandú').foto).toBeNull()
-    expect(porComercio('Bencina Demo').foto).toBeNull()
+    expect(urlFoto({ v: 'http://fotos.test/inseguro.png', formula: false })).toBeNull()
+    expect(porComercio('Sushi Test').foto).toBe('https://fotos.test/roto.png')
+    expect(porComercio('Farmacia Ávila').miniatura).toBe('https://fotos.test/farmacia-chica.png')
+    expect(porComercio('Restorán Uno').miniatura).toBeNull()
+  })
+})
+
+describe('fotos incrustadas en el Excel', () => {
+  it('asocia la imagen anclada en la columna Foto a su fila y la guarda una sola vez', () => {
+    const cafe = porComercio('Café Ñandú')
+    const bencina = porComercio('Bencina Demo')
+    expect(cafe.foto).toMatch(/^img:/)
+    expect(bencina.foto).toBe(cafe.foto)
+    expect(Object.keys(datos.imagenes ?? {})).toHaveLength(1)
+    const resueltos = resolverFotos(datos)
+    expect(resueltos.find((d) => d.comercio === 'Café Ñandú')!.foto).toMatch(/^data:image\/png;base64,iVBOR/)
+    // Las demás filas no cambian.
+    expect(resueltos.find((d) => d.comercio === 'Restorán Uno')!.foto).toBe('https://fotos.test/restoran.png')
   })
 })

@@ -16,10 +16,21 @@ export interface Cell {
   fill?: string
 }
 
+/** Imagen insertada en la hoja, anclada a una celda (esquina superior izquierda). */
+export interface Imagen {
+  row: number
+  col: number
+  /** Ruta dentro del .xlsx (ej. xl/media/image3.jpeg). */
+  ruta: string
+  mime: string
+  datos: Uint8Array
+}
+
 export interface Sheet {
   name: string
   /** rows[fila][columna], 0-based, disperso. */
   rows: (Cell | undefined)[][]
+  imagenes: Imagen[]
 }
 
 export interface Workbook {
@@ -316,5 +327,36 @@ function readSheet(
     }
   }
 
-  return { name, rows }
+  return { name, rows, imagenes: readImagenes(files, doc, rels) }
+}
+
+const MIME: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' }
+
+/** Imágenes de la hoja (dibujos anclados a celdas: lo que hace "Insertar imagen" en Excel u openpyxl). */
+function readImagenes(files: Record<string, Uint8Array>, doc: Document, rels: Map<string, Rel>): Imagen[] {
+  const out: Imagen[] = []
+  for (const d of els(doc, 'drawing')) {
+    const rel = rels.get(relId(d) ?? '')
+    if (!rel || rel.external || !files[rel.target]) continue
+    const drawing = parseXml(strFromU8(files[rel.target]))
+    const drawRels = readRels(files, rel.target)
+    for (const anchor of [...els(drawing, 'twoCellAnchor'), ...els(drawing, 'oneCellAnchor')]) {
+      const from = child(anchor, 'from')
+      const blip = els(anchor, 'blip')[0]
+      if (!from || !blip) continue
+      const embed = Array.from(blip.attributes).find((a) => a.localName === 'embed')?.value
+      const media = embed ? drawRels.get(embed) : undefined
+      if (!media || media.external || !files[media.target]) continue
+      const mime = MIME[media.target.split('.').pop()?.toLowerCase() ?? '']
+      if (!mime) continue
+      out.push({
+        row: Number(child(from, 'row')?.textContent ?? -1),
+        col: Number(child(from, 'col')?.textContent ?? -1),
+        ruta: media.target,
+        mime,
+        datos: files[media.target],
+      })
+    }
+  }
+  return out
 }

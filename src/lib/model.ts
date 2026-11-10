@@ -108,6 +108,8 @@ export interface Descuento {
   fuente: string | null
   /** Enlace a la foto del local (columna "Foto"); null si no viene. */
   foto: string | null
+  /** Versión liviana de la foto para la lista (columna "Miniatura"); si no viene, se usa la foto. */
+  miniatura: string | null
   noVerificado: boolean
 }
 
@@ -115,6 +117,11 @@ export interface DatosDescuentos {
   titulo: string | null
   periodo: { y: number; m: number } | null
   items: Descuento[]
+  /**
+   * Fotos incrustadas en el Excel, como data URL, una vez cada una. En los
+   * descuentos, foto/miniatura = "img:<clave>" apunta aquí.
+   */
+  imagenes?: Record<string, string>
 }
 
 // ---------- Almacenamiento ----------
@@ -125,9 +132,9 @@ export const SCHEMA = 1
  * Versión de la lectura de cada Excel. Subir la del tipo cuyo parser aprenda a
  * leer algo nuevo: al abrir la app, ese Excel se vuelve a leer solo desde la
  * copia guardada. Solo se sube la del Excel afectado, para no pedir el otro.
- * Descuentos 2 = "Tipo de restaurante"; 3 = "Tipo / subcategoría" y "Sector"; 4 = "Foto".
+ * Descuentos 2 = "Tipo de restaurante"; 3 = "Tipo / subcategoría" y "Sector"; 4 = "Foto"; 5 = "Miniatura"; 6 = fotos incrustadas.
  */
-export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 4 }
+export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 6 }
 
 interface RegistroBase {
   schema: number

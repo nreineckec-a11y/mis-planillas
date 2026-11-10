@@ -29,6 +29,7 @@ export const COLS_DESCUENTOS: ColumnSpec[] = [
   { key: 'verificacion', names: ['Verificación', 'Verificacion'] },
   { key: 'fuente', names: ['Fuente'] },
   { key: 'foto', names: ['Foto', 'Foto del local', 'Imagen', 'Foto (link a la imagen)', 'Imagen (link)', 'Logo'] },
+  { key: 'miniatura', names: ['Miniatura', 'Foto miniatura', 'Foto (miniatura)'] },
 ]
 
 /** Relleno "dato no verificado": FFF2CC exacto o cualquier amarillo claro. */
@@ -84,6 +85,19 @@ export function urlFoto(c: Cell | undefined): string | null {
   return url ? url.trim() : null
 }
 
+/** Clave por contenido (FNV-1a + tamaño): la misma foto repetida en varias filas se guarda una vez. */
+function claveImagen(b: Uint8Array): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i], 0x01000193)
+  return `${(h >>> 0).toString(36)}-${b.length.toString(36)}`
+}
+
+function dataUrl(mime: string, b: Uint8Array): string {
+  let bin = ''
+  for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000))
+  return `data:${mime};base64,${btoa(bin)}`
+}
+
 export interface ResultadoDescuentos {
   datos: DatosDescuentos
   filas: number
@@ -106,6 +120,25 @@ export function parseDescuentos(wb: Workbook, anioActual: number): ResultadoDesc
   if (!titulo) advertencias.push({ donde: HOJA_RESUMEN_DCTOS, mensaje: 'No encontré el título en Resumen!A1 (no se puede saber el mes del set)' })
   else if (!periodo) advertencias.push({ donde: HOJA_RESUMEN_DCTOS, mensaje: `No pude leer mes y año del título "${titulo}"` })
   const anio = periodo?.y ?? anioActual
+
+  // Fotos incrustadas: imagen anclada en la columna Foto (o Miniatura) de cada fila;
+  // si no hay columna Foto, cualquier imagen anclada en la fila.
+  const imagenes: Record<string, string> = {}
+  const porFila = (key: 'foto' | 'miniatura') => {
+    const m = new Map<number, string>()
+    const col = table.cols[key]
+    if (col === undefined && key === 'miniatura') return m
+    for (const img of sheet.imagenes) {
+      if (col !== undefined && img.col !== col) continue
+      if (m.has(img.row)) continue
+      const k = claveImagen(img.datos)
+      imagenes[k] ??= dataUrl(img.mime, img.datos)
+      m.set(img.row, `img:${k}`)
+    }
+    return m
+  }
+  const fotosIncrustadas = porFila('foto')
+  const miniIncrustadas = porFila('miniatura')
 
   const items: Descuento[] = []
   for (const r of table.rowIndexes) {
@@ -134,7 +167,8 @@ export function parseDescuentos(wb: Workbook, anioActual: number): ResultadoDesc
     const fuenteTxt = cellText(fuenteCell)
     if (!fuente && /^https?:\/\//i.test(fuenteTxt)) fuente = fuenteTxt
     if (fuente && !/^https?:\/\//i.test(fuente)) fuente = null
-    const foto = urlFoto(table.get(r, 'foto'))
+    const foto = fotosIncrustadas.get(r) ?? urlFoto(table.get(r, 'foto'))
+    const miniatura = miniIncrustadas.get(r) ?? urlFoto(table.get(r, 'miniatura'))
     const categoria = cellText(table.get(r, 'categoria'))
     const noVerificado = esAmarillo(table.get(r, 'tarjetasAplican')?.fill) || esAmarillo(table.get(r, 'verificacion')?.fill)
 
@@ -163,8 +197,11 @@ export function parseDescuentos(wb: Workbook, anioActual: number): ResultadoDesc
       verificacion: cellText(table.get(r, 'verificacion')),
       fuente,
       foto,
+      miniatura,
       noVerificado,
     })
   }
-  return { datos: { titulo, periodo, items }, filas: items.length, advertencias }
+  const datos: DatosDescuentos = { titulo, periodo, items }
+  if (Object.keys(imagenes).length) datos.imagenes = imagenes
+  return { datos, filas: items.length, advertencias }
 }

@@ -3,7 +3,7 @@ import { Card, Chip, Colapsable, Etiqueta, Header, Segmented, Sheet, Vacio, colo
 import { addDays, DIAS, MESES, today, weekday, type Ymd } from '../lib/dates'
 import { clp, pct } from '../lib/format'
 import type { Descuento } from '../lib/model'
-import { comerciosQueCalzan, descuentosDelDia, tablaComercio, valoresUnicos, zonasPorDefecto, type Filtros } from '../lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDelDia, resolverFotos, tablaComercio, valoresUnicos, zonasPorDefecto, type Filtros } from '../lib/descuentos/filtros'
 import { norm } from '../lib/text'
 import { conEmoji, conEmojiCategoria, emojiCategoria, emojiTipo } from '../lib/descuentos/emoji'
 import { useMostrarFotos } from '../lib/prefs'
@@ -41,6 +41,8 @@ export default function Descuentos() {
   const [detalle, setDetalle] = useState<Descuento | null>(null)
   const ahora = useHoy()
   const hoy = today(ahora)
+  // Las fotos incrustadas se guardan una vez; aquí cada descuento recibe su data URL.
+  const items = useMemo(() => (descuentos ? resolverFotos(descuentos.datos) : []), [descuentos])
 
   if (cargando) return null
   if (!descuentos)
@@ -51,7 +53,7 @@ export default function Descuentos() {
       </>
     )
 
-  const { periodo, titulo, items } = descuentos.datos
+  const { periodo, titulo } = descuentos.datos
   const desactualizado = periodo && (periodo.y !== hoy.y || periodo.m !== hoy.m)
 
   return (
@@ -318,7 +320,7 @@ function GrupoFiltro({
   )
 }
 
-type DatosFoto = Pick<Descuento, 'foto' | 'tipo' | 'categoriaGrupo' | 'comercio'>
+type DatosFoto = Pick<Descuento, 'foto' | 'miniatura' | 'tipo' | 'categoriaGrupo' | 'comercio'>
 
 /** Emoji que reemplaza la foto: el de la subcategoría o, si no hay, el de la categoría. */
 function emojiDe(d: DatosFoto): string {
@@ -330,11 +332,12 @@ function emojiDe(d: DatosFoto): string {
 function Miniatura({ d }: { d: DatosFoto }) {
   const [mostrar] = useMostrarFotos()
   const [fallo, setFallo] = useState(false)
-  const conFoto = mostrar && d.foto && !fallo
+  const src = d.miniatura ?? d.foto
+  const conFoto = mostrar && src && !fallo
   return (
     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-2xl dark:bg-slate-800">
       {conFoto ? (
-        <img src={d.foto!} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFallo(true)} className="h-full w-full object-cover" />
+        <img src={src!} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFallo(true)} className="h-full w-full object-cover" />
       ) : (
         <span aria-hidden>{emojiDe(d)}</span>
       )}
