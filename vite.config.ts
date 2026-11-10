@@ -10,7 +10,8 @@ const CSP = [
   "connect-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  // Fotos de los locales: vienen como enlaces https en el Excel.
+  "img-src 'self' data: https:",
   "font-src 'self'",
   "worker-src 'self'",
   "manifest-src 'self'",
@@ -61,6 +62,18 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         navigateFallback: 'index.html',
+        // Las fotos ya vistas quedan guardadas para verlas sin conexión.
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, sameOrigin }) => request.destination === 'image' && !sameOrigin,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fotos',
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

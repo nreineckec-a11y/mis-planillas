@@ -1,4 +1,5 @@
-import { compareYmd, toDayNumber, type Ymd } from '../dates'
+import { compareYmd, fromExcelSerial, isValidYmd, MESES, toDayNumber, type Ymd } from '../dates'
+import { norm } from '../text'
 import { clp } from '../format'
 import type { DatosPersonal, EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaHorasExtra, ItemPersonal, Parametros } from '../model'
 
@@ -115,6 +116,70 @@ export function totalesHE(hoja: HojaHorasExtra): Record<EstadoHE | 'Total', Tota
   return out
 }
 
+export type Orden = 'asc' | 'desc'
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+function mesDeTexto(mes: string): number | null {
+  const n = norm(mes)
+  const i = MESES.findIndex((m) => n.startsWith(m.slice(0, 3)))
+  return i < 0 ? null : i + 1
+}
+
+/**
+ * Fecha de una fila de horas extra. "Fecha" es texto libre ("14.05 y 15.05",
+ * "20/05"): se toma la primera fecha; si solo hay un día, el mes sale de la
+ * columna Mes. También acepta fechas de Excel (número de serie).
+ */
+export function fechaHE(f: FilaHorasExtra, anio: string | null): Ymd | null {
+  const y = Number(anio) || null
+  const t = f.fecha.trim()
+  if (/^\d{5}(\.\d+)?$/.test(t)) return fromExcelSerial(Number(t))
+  const dm = /(\d{1,2})\s*[./-]\s*(\d{1,2})(?:\s*[./-]\s*(\d{2,4}))?/.exec(t)
+  if (dm) {
+    const anioTxt = dm[3] ? (dm[3].length === 2 ? 2000 + Number(dm[3]) : Number(dm[3])) : null
+    const ymd = { y: anioTxt ?? y ?? 2000, m: Number(dm[2]), d: Number(dm[1]) }
+    if (isValidYmd(ymd)) return ymd
+  }
+  const m = mesDeTexto(f.mes)
+  const d = /\b(\d{1,2})\b/.exec(t)
+  if (m && d) {
+    const ymd = { y: y ?? 2000, m, d: Number(d[1]) }
+    if (isValidYmd(ymd)) return ymd
+  }
+  return null
+}
+
+/** Texto de la fecha para mostrar (convierte números de serie de Excel a "dd.mm"). */
+export function textoFechaHE(f: FilaHorasExtra): string {
+  const t = f.fecha.trim()
+  if (/^\d{5}(\.\d+)?$/.test(t)) {
+    const ymd = fromExcelSerial(Number(t))
+    return `${pad2(ymd.d)}.${pad2(ymd.m)}`
+  }
+  return t
+}
+
+/**
+ * Ordena por fecha (y por mes cuando la fecha no se entiende). Las filas sin
+ * fecha ni mes reconocible quedan al final, en el orden del Excel.
+ */
+export function ordenarHE<F extends FilaHorasExtra>(filas: F[], anio: string | null, orden: Orden = 'asc'): F[] {
+  const clave = (f: F) => {
+    const fecha = fechaHE(f, anio)
+    if (fecha) return fecha.y * 10000 + fecha.m * 100 + fecha.d
+    const m = mesDeTexto(f.mes)
+    // Sin día: al final de su mes.
+    return m ? (Number(anio) || 2000) * 10000 + m * 100 + 99 : null
+  }
+  const conClave = filas.map((f, i) => ({ f, i, k: clave(f) }))
+  conClave.sort((a, b) => {
+    if (a.k === null || b.k === null) return a.k === b.k ? a.i - b.i : a.k === null ? 1 : -1
+    return (orden === 'asc' ? a.k - b.k : b.k - a.k) || a.i - b.i
+  })
+  return conClave.map((x) => x.f)
+}
+
 export function agruparPorMes<F extends FilaHorasExtra>(filas: F[]): { mes: string; filas: F[] }[] {
   const grupos: { mes: string; filas: F[] }[] = []
   for (const f of filas) {
@@ -183,8 +248,11 @@ export function totalesComp(filas: FilaCompCalc[]): Record<EstadoComp | 'Total',
 }
 
 /** Próximas programadas (más cercana primero) y luego realizadas (más reciente primero). */
-export function ordenarComp<F extends FilaCompensatoria>(filas: FilaCompCalc<F>[]): FilaCompCalc<F>[] {
-  const prog = filas.filter((f) => f.estado === 'Programada').sort((a, b) => toDayNumber(a.fecha) - toDayNumber(b.fecha))
-  const real = filas.filter((f) => f.estado === 'Realizada').sort((a, b) => toDayNumber(b.fecha) - toDayNumber(a.fecha))
-  return [...prog, ...real]
+/** Orden cronológico (de más antigua a más reciente, o al revés). */
+export function ordenarComp<F extends FilaCompensatoria>(filas: FilaCompCalc<F>[], orden: Orden = 'asc'): FilaCompCalc<F>[] {
+  const signo = orden === 'asc' ? 1 : -1
+  return filas
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => signo * (toDayNumber(a.f.fecha) - toDayNumber(b.f.fecha)) || a.i - b.i)
+    .map((x) => x.f)
 }

@@ -3,8 +3,11 @@ import { parseCuentas } from '../src/lib/cuentas/parse'
 import {
   agruparPorMes,
   calcularComp,
+  fechaHE,
   montoHE,
   ordenarComp,
+  ordenarHE,
+  textoFechaHE,
   resumenPersonal,
   textoCobro,
   totalesComp,
@@ -128,7 +131,8 @@ describe('Compensatorias', () => {
     expect(t.Realizada).toMatchObject({ horasTrabajadas: 9, generadas: 12.25, tomadas: 3, saldo: 9.25, equivalente: 92500 })
     expect(t.Programada).toMatchObject({ generadas: 12, saldo: 12, equivalente: 120000 })
     expect(t.Total.saldo).toBe(21.25)
-    expect(ordenarComp(filas).map((f) => f.fecha.m)).toEqual([12, 10, 9, 4])
+    expect(ordenarComp(filas).map((f) => f.fecha.m)).toEqual([4, 9, 10, 12])
+    expect(ordenarComp(filas, 'desc').map((f) => f.fecha.m)).toEqual([12, 10, 9, 4])
 
     const antes = calcularComp(co, { y: 2026, m: 10, d: 27 })
     expect(antes[2].estado).toBe('Programada')
@@ -150,5 +154,32 @@ describe('Estructura alterada', () => {
     expect(he.anio).toBe('2027')
     expect(montoHE(he, he.filas[0])).toBe(24000)
     expect(r.datos.compensatorias).toEqual([])
+  })
+})
+
+describe('orden por fecha de horas extra', () => {
+  const base = datos.horasExtra[0].filas[0]
+  const fila = (fecha: string, mes: string, detalle: string) => ({ ...base, fecha, mes, detalle })
+
+  it('interpreta la fecha de texto libre', () => {
+    expect(fechaHE(fila('14.05 y 15.05', 'Mayo', ''), '2026')).toEqual({ y: 2026, m: 5, d: 14 })
+    expect(fechaHE(fila('3/6', 'Junio', ''), '2026')).toEqual({ y: 2026, m: 6, d: 3 })
+    expect(fechaHE(fila('día 7', 'Julio', ''), '2026')).toEqual({ y: 2026, m: 7, d: 7 })
+    expect(fechaHE(fila('46117', 'Abril', ''), '2026')).toEqual({ y: 2026, m: 4, d: 5 })
+    expect(textoFechaHE(fila('46117', 'Abril', ''))).toBe('05.04')
+    expect(fechaHE(fila('', 'Mayo', ''), '2026')).toBeNull()
+  })
+
+  it('ordena por fecha, con el mes como respaldo y lo irreconocible al final', () => {
+    const filas = [
+      fila('20.05', 'Mayo', 'b'),
+      fila('', 'Raro', 'z'),
+      fila('03.06', 'Junio', 'd'),
+      fila('', 'Mayo', 'c'),
+      fila('14.05', 'Mayo', 'a'),
+      fila('02.01', 'Enero', 'inicio'),
+    ]
+    expect(ordenarHE(filas, '2026').map((f) => f.detalle)).toEqual(['inicio', 'a', 'b', 'c', 'd', 'z'])
+    expect(ordenarHE(filas, '2026', 'desc').map((f) => f.detalle)).toEqual(['d', 'c', 'b', 'a', 'inicio', 'z'])
   })
 })

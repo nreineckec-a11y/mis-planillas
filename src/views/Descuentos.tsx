@@ -5,7 +5,8 @@ import { clp, pct } from '../lib/format'
 import type { Descuento } from '../lib/model'
 import { comerciosQueCalzan, descuentosDelDia, tablaComercio, valoresUnicos, zonasPorDefecto, type Filtros } from '../lib/descuentos/filtros'
 import { norm } from '../lib/text'
-import { conEmoji, conEmojiCategoria } from '../lib/descuentos/emoji'
+import { conEmoji, conEmojiCategoria, emojiCategoria, emojiTipo } from '../lib/descuentos/emoji'
+import { useMostrarFotos } from '../lib/prefs'
 import { prefGuardar, prefLeer } from '../lib/storage'
 import { useDatos, useHoy } from '../state'
 
@@ -317,10 +318,52 @@ function GrupoFiltro({
   )
 }
 
+type DatosFoto = Pick<Descuento, 'foto' | 'tipo' | 'categoriaGrupo' | 'comercio'>
+
+/** Emoji que reemplaza la foto: el de la subcategoría o, si no hay, el de la categoría. */
+function emojiDe(d: DatosFoto): string {
+  if (d.tipo && norm(d.tipo) !== 'por confirmar') return emojiTipo(d.tipo)
+  return emojiCategoria(d.categoriaGrupo) || '🏷️'
+}
+
+/** Miniatura del local; si no hay foto (o no carga, o están desactivadas), un recuadro con emoji. */
+function Miniatura({ d }: { d: DatosFoto }) {
+  const [mostrar] = useMostrarFotos()
+  const [fallo, setFallo] = useState(false)
+  const conFoto = mostrar && d.foto && !fallo
+  return (
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-2xl dark:bg-slate-800">
+      {conFoto ? (
+        <img src={d.foto!} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFallo(true)} className="h-full w-full object-cover" />
+      ) : (
+        <span aria-hidden>{emojiDe(d)}</span>
+      )}
+    </div>
+  )
+}
+
+/** Foto grande (detalle y buscar comercio); no muestra nada si no hay o no carga. */
+function FotoGrande({ d }: { d: DatosFoto }) {
+  const [mostrar] = useMostrarFotos()
+  const [fallo, setFallo] = useState(false)
+  if (!mostrar || !d.foto || fallo) return null
+  return (
+    <img
+      src={d.foto}
+      alt={`Foto de ${d.comercio}`}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFallo(true)}
+      className="mb-3 aspect-video w-full rounded-2xl bg-slate-100 object-cover dark:bg-slate-800"
+    />
+  )
+}
+
 function TarjetaDescuento({ d, onClick }: { d: Descuento; onClick: () => void }) {
   return (
     <Card onClick={onClick} className="p-3">
       <div className="flex items-start gap-3">
+        <Miniatura d={d} />
         <div className="min-w-0 flex-1">
           <div className="text-base font-semibold leading-snug">
             {d.comercio}
@@ -371,6 +414,7 @@ function DetalleDescuento({ d, onClose }: { d: Descuento | null; onClose: () => 
   ]
   return (
     <Sheet open onClose={onClose} titulo={d.comercio}>
+      <FotoGrande key={d.id} d={d} />
       {d.tarjeta && <Etiqueta className={colorTarjeta(d.tarjeta)}>{d.tarjeta}</Etiqueta>}
       {d.noVerificado && (
         <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
@@ -403,6 +447,8 @@ function Buscar({ items, onDetalle }: { items: Descuento[]; onDetalle: (d: Descu
   const [comercio, setComercio] = useState<string | null>(null)
   const encontrados = useMemo(() => comerciosQueCalzan(items, texto).slice(0, 60), [items, texto])
   const tabla = useMemo(() => (comercio ? tablaComercio(items, comercio) : null), [items, comercio])
+  // Primer descuento con foto del comercio elegido.
+  const fotoComercio = useMemo(() => (comercio ? items.find((d) => norm(d.comercio) === norm(comercio) && d.foto) : undefined), [items, comercio])
   // Tipo de comida y comuna para mostrar bajo cada comercio de la lista.
   const infoComercio = useMemo(() => {
     const m = new Map<string, string>()
@@ -445,6 +491,7 @@ function Buscar({ items, onDetalle }: { items: Descuento[]; onDetalle: (d: Descu
 
       {tabla && comercio && (
         <div className="mt-4">
+          {fotoComercio && <FotoGrande key={comercio} d={fotoComercio} />}
           <h2 className="text-lg font-semibold">{comercio}</h2>
           {infoComercio.get(norm(comercio)) && <p className="text-sm text-slate-500 dark:text-slate-400">{infoComercio.get(norm(comercio))}</p>}
           {tabla.tarjetas.length > 0 && (

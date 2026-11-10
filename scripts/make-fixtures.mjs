@@ -134,6 +134,7 @@ async function descuentos(archivo = 'descuentos.xlsx', tipoHeader = 'Tipo / subc
     // Columnas agregadas después: quedan al final para probar que se mapean por nombre.
     tipoHeader,
     'Sector',
+    'Foto',
   ]
   const link = (n) => ({ text: 'Ver ficha', hyperlink: `https://example.com/ficha/${n}` })
   const filas = [
@@ -160,6 +161,12 @@ async function descuentos(archivo = 'descuentos.xlsx', tipoHeader = 'Tipo / subc
   ;['S3', 'S4', 'S5', 'S6', 'S13'].forEach((c) => (pd.getCell(c).value = 'Providencia–Ñuñoa'))
   pd.getCell('S9').value = 'Oriente'
   pd.getCell('S7').value = 'Región de Biobío'
+  // Foto (columna T): texto, hipervínculo, función IMAGEN, enlace roto y http (no se acepta).
+  ;['T3', 'T4', 'T5'].forEach((c) => (pd.getCell(c).value = 'https://fotos.test/restoran.png'))
+  pd.getCell('T7').value = { text: 'foto', hyperlink: 'https://fotos.test/farmacia.png' }
+  pd.getCell('T13').value = { formula: 'IMAGE("https://fotos.test/pizza.png")' }
+  pd.getCell('T9').value = 'https://fotos.test/roto.png'
+  pd.getCell('T6').value = 'http://fotos.test/inseguro.png'
   // Fila de Pizzería: "Tarjetas que aplican" en amarillo ARGB; Heladería: "Verificación" amarillo de tema.
   pd.getCell('M13').fill = AMARILLO
   pd.getCell('P14').fill = AMARILLO_TEMA

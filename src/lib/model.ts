@@ -106,6 +106,8 @@ export interface Descuento {
   condiciones: string
   verificacion: string
   fuente: string | null
+  /** Enlace a la foto del local (columna "Foto"); null si no viene. */
+  foto: string | null
   noVerificado: boolean
 }
 
@@ -123,9 +125,9 @@ export const SCHEMA = 1
  * Versión de la lectura de cada Excel. Subir la del tipo cuyo parser aprenda a
  * leer algo nuevo: al abrir la app, ese Excel se vuelve a leer solo desde la
  * copia guardada. Solo se sube la del Excel afectado, para no pedir el otro.
- * Descuentos 2 = "Tipo de restaurante"; 3 = "Tipo / subcategoría" y "Sector".
+ * Descuentos 2 = "Tipo de restaurante"; 3 = "Tipo / subcategoría" y "Sector"; 4 = "Foto".
  */
-export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 3 }
+export const PARSER: Record<Tipo, number> = { cuentas: 1, descuentos: 4 }
 
 interface RegistroBase {
   schema: number

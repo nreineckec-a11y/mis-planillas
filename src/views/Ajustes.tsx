@@ -3,6 +3,7 @@ import { BotonCargar, Card, Colapsable, Header } from '../components/ui'
 import { fechaHora } from '../lib/format'
 import { resumenAdvertencias } from '../lib/importar'
 import type { Advertencia, Registro, Tipo } from '../lib/model'
+import { useMostrarFotos } from '../lib/prefs'
 import { useDatos } from '../state'
 
 const NOMBRE: Record<Tipo, string> = { cuentas: 'Cuentas por cobrar', descuentos: 'Descuentos' }
@@ -75,6 +76,7 @@ function Bloque({ tipo, r, obsoleto }: { tipo: Tipo; r?: Registro; obsoleto: boo
 
 export default function Ajustes() {
   const { cuentas, descuentos, obsoletos, persistido } = useDatos()
+  const [fotos, setFotos] = useMostrarFotos()
   return (
     <>
       <Header titulo="Ajustes" />
@@ -97,6 +99,16 @@ export default function Ajustes() {
           <p className="mt-1 text-slate-600 dark:text-slate-300">
             Los Excel se leen y guardan solo en este teléfono. La app no envía datos a ningún servidor y funciona sin conexión.
           </p>
+          <label className="mt-3 flex min-h-11 items-center justify-between gap-3">
+            <span>
+              <span className="block font-medium">Mostrar fotos de los locales</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                Las fotos se descargan desde los enlaces de la columna "Foto" del Excel (ese sitio ve que se pidió la imagen, no tus datos). Las ya vistas
+                quedan guardadas para verlas sin conexión.
+              </span>
+            </span>
+            <input type="checkbox" className="h-6 w-6 shrink-0 accent-teal-700" checked={fotos} onChange={(e) => setFotos(e.target.checked)} />
+          </label>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Almacenamiento persistente:{' '}
             {persistido === true ? 'concedido ✓' : persistido === false ? 'no concedido (el sistema podría borrar los datos si falta espacio)' : 'se pedirá al cargar un Excel'}

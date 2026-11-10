@@ -11,7 +11,7 @@ El Excel sigue siendo la fuente de verdad: cada vez que cargas uno nuevo, la app
 
 - Los Excel se leen **en el teléfono**. No hay servidor, base de datos remota ni analítica.
 - Los datos quedan en IndexedDB del navegador. Al cargar un Excel se pide almacenamiento persistente.
-- El sitio publicado declara una política de seguridad (`connect-src 'self'`) que impide enviar datos a otros servidores. Los tests revisan que el código no haga requests de red.
+- El sitio publicado declara una política de seguridad (`connect-src 'self'`) que impide enviar datos a otros servidores. Los tests revisan que el código no haga requests de red. La única excepción son las fotos de los locales (si el Excel trae enlaces), que se pueden desactivar en Ajustes.
 - Nunca se suben Excel al repositorio: `*.xlsx` y `privado/` están en `.gitignore`. Los tests usan Excel **sintéticos** generados por `scripts/make-fixtures.mjs`.
 
 ## Instalar en el teléfono
@@ -38,6 +38,8 @@ En **Trabajo → Horas extra** puedes:
 
 En **Compensatorias** también puedes agregar turnos.
 
+Ambas listas se ordenan por fecha, con un selector "Antiguas primero / Recientes primero" que se recuerda. En horas extra la fecha sale del texto de la columna Fecha ("14.05 y 15.05" se ordena por el 14 de mayo); si no se entiende, se usa el mes, y lo que no tiene ni fecha ni mes queda al final.
+
 Estos cambios se guardan en el teléfono **aparte del Excel**, así que no se pierden al cargar un Excel nuevo. Un aviso morado indica cuántos cambios faltan por pasar al Excel, con un botón para **copiar un resumen** y anotarlos allá. Cuando cargues un Excel que ya los incluya, la app los quita sola:
 
 - Un turno agregado se considera anotado si en el Excel hay una fila del mismo mes, con las mismas horas y el mismo recargo, y cuya Fecha contiene el día.
@@ -51,6 +53,12 @@ Bajo el buscador hay chips de **categoría** (🍽️ Restaurantes, 🛵 Deliver
 Columnas opcionales que lee la app: `Tipo / subcategoría` (también acepta el nombre anterior `Tipo de restaurante`) y `Sector`. Los emojis se asignan por palabras clave (`src/lib/descuentos/emoji.ts`), así que valores nuevos reciben uno razonable (🏷️ si no calza ninguno).
 
 La zona por defecto muestra todas las zonas menos "Regiones".
+
+### Fotos de los locales
+
+Si la hoja `Por día` trae una columna **`Foto`** (también `Imagen` o `Foto del local`) con el enlace `https://` a una imagen, la app muestra una miniatura en cada descuento y la foto grande en el detalle y en "Buscar comercio". Sirve el enlace como texto, como hipervínculo o con la función de Excel `=IMAGEN("https://…")`. Si un descuento no tiene foto, o el enlace no carga, se muestra el emoji de su tipo.
+
+Las fotos se descargan desde el sitio del enlace (ese sitio ve que se pidió la imagen, no los datos del Excel) y las ya vistas quedan guardadas para verlas sin conexión. Se pueden desactivar en Ajustes → "Mostrar fotos de los locales".
 
 ## Correr en local
 

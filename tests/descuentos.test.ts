@@ -170,3 +170,13 @@ describe('subcategoría, sector y zonas (estructura de noviembre)', () => {
     expect(zonasPorDefecto(valoresUnicos(datos.items, 'zona'))).toEqual(['Online', 'RM', 'RM + online'])
   })
 })
+
+describe('fotos de los locales', () => {
+  it('lee la columna Foto como texto, hipervínculo o función IMAGEN; solo https', () => {
+    expect(porComercio('Restorán Uno').foto).toBe('https://fotos.test/restoran.png')
+    expect(porComercio('Farmacia Ávila').foto).toBe('https://fotos.test/farmacia.png')
+    expect(porComercio('Pizzería Falsa').foto).toBe('https://fotos.test/pizza.png')
+    expect(porComercio('Café Ñandú').foto).toBeNull()
+    expect(porComercio('Bencina Demo').foto).toBeNull()
+  })
+})

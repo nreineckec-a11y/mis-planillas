@@ -1,4 +1,4 @@
-import type { Workbook } from '../xlsx/reader'
+import type { Cell, Workbook } from '../xlsx/reader'
 import { findTable, isTable, rowLabel, sheetByName, type ColumnSpec } from '../table'
 import { cellNumber, cellText, norm, toFraction, toNumber } from '../text'
 import { MESES } from '../dates'
@@ -28,6 +28,7 @@ export const COLS_DESCUENTOS: ColumnSpec[] = [
   { key: 'condiciones', names: ['Condiciones'] },
   { key: 'verificacion', names: ['Verificación', 'Verificacion'] },
   { key: 'fuente', names: ['Fuente'] },
+  { key: 'foto', names: ['Foto', 'Foto del local', 'Imagen', 'Foto (link a la imagen)', 'Imagen (link)', 'Logo'] },
 ]
 
 /** Relleno "dato no verificado": FFF2CC exacto o cualquier amarillo claro. */
@@ -71,6 +72,16 @@ export function parsePeriodo(titulo: string): { y: number; m: number } | null {
 export function grupoCategoria(cat: string): string {
   const g = cat.split(/\s[–—-]\s/)[0].trim()
   return g || cat.trim()
+}
+
+const IMAGE_FN = /IMAGE\(\s*"([^"]+)"/i
+
+/** Enlace de la foto: texto con URL, hipervínculo o función IMAGEN("url") de Excel. Solo https. */
+export function urlFoto(c: Cell | undefined): string | null {
+  if (!c) return null
+  const candidatos = [c.link, c.f ? IMAGE_FN.exec(c.f)?.[1] : undefined, cellText(c)]
+  const url = candidatos.find((u) => u && /^https:\/\/\S+$/i.test(u.trim()))
+  return url ? url.trim() : null
 }
 
 export interface ResultadoDescuentos {
@@ -123,6 +134,7 @@ export function parseDescuentos(wb: Workbook, anioActual: number): ResultadoDesc
     const fuenteTxt = cellText(fuenteCell)
     if (!fuente && /^https?:\/\//i.test(fuenteTxt)) fuente = fuenteTxt
     if (fuente && !/^https?:\/\//i.test(fuente)) fuente = null
+    const foto = urlFoto(table.get(r, 'foto'))
     const categoria = cellText(table.get(r, 'categoria'))
     const noVerificado = esAmarillo(table.get(r, 'tarjetasAplican')?.fill) || esAmarillo(table.get(r, 'verificacion')?.fill)
 
@@ -150,6 +162,7 @@ export function parseDescuentos(wb: Workbook, anioActual: number): ResultadoDesc
       condiciones: cellText(table.get(r, 'condiciones')),
       verificacion: cellText(table.get(r, 'verificacion')),
       fuente,
+      foto,
       noVerificado,
     })
   }

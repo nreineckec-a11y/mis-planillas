@@ -7,6 +7,9 @@ import {
   factorDe,
   montoHE,
   ordenarComp,
+  ordenarHE,
+  textoFechaHE,
+  type Orden,
   totalesComp,
   totalesHE,
   valorHoraHE,
@@ -34,6 +37,7 @@ import { compareYmd, DIAS, formatYmd, formatYmdCorta, MESES, parseDateValue, toI
 import { clp, horas } from '../lib/format'
 import type { EstadoHE, HojaCompensatorias, HojaHorasExtra, Parametros } from '../lib/model'
 import { toNumber } from '../lib/text'
+import { prefGuardar, prefLeer } from '../lib/storage'
 import { useDatos, useHoy } from '../state'
 
 const COLOR_ESTADO: Record<string, string> = {
@@ -121,6 +125,33 @@ function SelectorAnio({ hojas, actual, onChange }: { hojas: { anio: string | nul
         </Chip>
       ))}
     </div>
+  )
+}
+
+// ---------- Orden por fecha ----------
+
+/** Orden elegido (se recuerda entre visitas y es el mismo para horas extra y compensatorias). */
+function useOrden(): [Orden, (o: Orden) => void] {
+  const [orden, setOrden] = useState<Orden>(() => prefLeer<Orden>('ordenTrabajo', 'asc'))
+  return [
+    orden,
+    (o) => {
+      setOrden(o)
+      prefGuardar('ordenTrabajo', o)
+    },
+  ]
+}
+
+function SelectorOrden({ orden, onChange }: { orden: Orden; onChange: (o: Orden) => void }) {
+  return (
+    <Segmented
+      value={orden}
+      onChange={onChange}
+      options={[
+        { value: 'asc', label: '↑ Antiguas primero' },
+        { value: 'desc', label: '↓ Recientes primero' },
+      ]}
+    />
   )
 }
 
@@ -230,8 +261,9 @@ function HorasExtra({ hoja: hojaExcel }: { hoja: HojaHorasExtra }) {
   const [editando, setEditando] = useState<TurnoHELocal | 'nuevo' | null>(null)
   const [estadoDe, setEstadoDe] = useState<FilaHEVista | null>(null)
   const totales = totalesHE(hoja)
+  const [orden, setOrden] = useOrden()
   const filas = filtro ? hoja.filas.filter((f) => f.estado === filtro) : hoja.filas
-  const grupos = agruparPorMes(filas)
+  const grupos = agruparPorMes(ordenarHE(filas, hoja.anio, orden))
   const seleccionadas = hoja.filas.filter((f) => sel.has(f.clave))
   const montoSel = seleccionadas.reduce((a, f) => a + (montoHE(hoja, f) ?? 0), 0)
 
@@ -287,6 +319,8 @@ function HorasExtra({ hoja: hojaExcel }: { hoja: HojaHorasExtra }) {
           </button>
         </p>
       )}
+
+      <SelectorOrden orden={orden} onChange={setOrden} />
 
       {grupos.map((g) => (
         <section key={g.mes} className="mt-5">
@@ -360,7 +394,7 @@ function FilaHE({ hoja, f, marcada, onToggle, onAbrir }: { hoja: HojaHEVista; f:
         <div className="min-w-0">
           <div className="font-semibold">{f.detalle || 'Sin detalle'}</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">
-            {f.fecha || 'sin fecha'} · {horas(f.horas)} al {f.recargo ? `${f.recargo}%` : '¿?'}
+            {textoFechaHE(f) || 'sin fecha'} · {horas(f.horas)} al {f.recargo ? `${f.recargo}%` : '¿?'}
             {vh !== null && ` · ${clp(vh)}/h`}
           </div>
           {f.liquidacion && <div className="text-xs text-slate-500 dark:text-slate-400">Liquidación: {f.liquidacion}</div>}
@@ -632,7 +666,8 @@ function Compensatorias({ hoja: hojaExcel }: { hoja: HojaCompensatorias }) {
   const hoja = useMemo(() => combinarComp(hojaExcel, cambios), [hojaExcel, cambios])
   const filas = calcularComp(hoja, hoy)
   const t = totalesComp(filas)
-  const ordenadas = ordenarComp(filas)
+  const [orden, setOrden] = useOrden()
+  const ordenadas = ordenarComp(filas, orden)
   const [editando, setEditando] = useState<TurnoCompLocal | 'nuevo' | null>(null)
 
   return (
@@ -687,7 +722,9 @@ function Compensatorias({ hoja: hojaExcel }: { hoja: HojaCompensatorias }) {
         + Agregar turno
       </button>
 
-      <h2 className="mt-5 mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Registro</h2>
+      <h2 className="mt-5 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Registro</h2>
+      <SelectorOrden orden={orden} onChange={setOrden} />
+      <div className="mb-2" />
       <div className="space-y-2">
         {ordenadas.map((f) => (
           <FilaComp

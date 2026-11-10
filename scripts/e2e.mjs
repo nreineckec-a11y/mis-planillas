@@ -35,13 +35,20 @@ try {
     })
     // Fecha fija dentro del mes del set sintético (martes 6 de octubre de 2026).
     await ctx.clock.setFixedTime(new Date('2026-10-06T10:00:00-03:00'))
+    // Fotos de prueba: el dominio ficticio se sirve localmente (y una da 404 para probar el respaldo).
+    await ctx.route('https://fotos.test/**', (route) =>
+      route.request().url().includes('roto') ? route.fulfill({ status: 404 }) : route.fulfill({ path: 'public/icon-192.png', contentType: 'image/png' }),
+    )
     const page = await ctx.newPage()
     page.on('request', (r) => {
       const u = r.url()
-      if (!u.startsWith(ORIGEN) && !u.startsWith('data:')) externas.push(u)
+      if (!u.startsWith(ORIGEN) && !u.startsWith('data:') && !u.startsWith('https://fotos.test/')) externas.push(u)
     })
     page.on('pageerror', (e) => errores.push(`${esquema}: ${e.message}`))
-    page.on('console', (m) => m.type() === 'error' && errores.push(`${esquema}: ${m.text()}`))
+    page.on('console', (m) => {
+      // El 404 de la foto rota es intencional.
+      if (m.type() === 'error' && !m.location().url.includes('fotos.test/roto')) errores.push(`${esquema}: ${m.text()} ${m.location().url}`)
+    })
     const shot = (n) => page.screenshot({ path: join(shots, `${esquema}-${n}.png`) })
 
     await page.goto(ORIGEN)
@@ -58,7 +65,11 @@ try {
     await page.getByRole('button', { name: 'Listo' }).click()
 
     await page.getByRole('button', { name: /^Martes 6/ }).click()
+    await page.waitForTimeout(500)
     await shot('03-descuentos-hoy')
+    // Sushi Test tiene un enlace roto: debe quedar el emoji, sin imagen rota.
+    const imgs = await page.locator('main img').evaluateAll((xs) => xs.map((x) => x.getAttribute('src')))
+    if (imgs.some((src) => src?.includes('roto'))) errores.push('se muestra una foto rota')
     await page.getByText('Sushi Test').first().click()
     await shot('04-detalle-descuento')
     await page.getByRole('button', { name: 'Cerrar' }).last().click()
@@ -92,6 +103,11 @@ try {
 
     await page.getByRole('button', { name: /Trabajo/ }).click()
     await shot('09-horas-extra')
+    await page.getByRole('button', { name: '↓ Recientes primero' }).first().click()
+    const meses = await page.locator('main section h2').allInnerTexts()
+    if (meses.join(',') !== 'JUNIO,MAYO') errores.push(`orden de meses inesperado: ${meses}`)
+    await shot('19-horas-recientes')
+    await page.getByRole('button', { name: '↑ Antiguas primero' }).first().click()
 
     // Agregar un turno de horas extra.
     await page.getByRole('button', { name: '+ Agregar turno' }).click()

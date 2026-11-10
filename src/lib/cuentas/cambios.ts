@@ -3,6 +3,7 @@
 // importar, los que ya aparecen en el Excel se descartan solos.
 import { compareYmd, formatYmd, MESES, type Ymd } from '../dates'
 import { clp, horas as fmtHoras } from '../format'
+import { textoFechaHE } from './calc'
 import type { DatosCuentas, EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaCompensatorias, HojaHorasExtra } from '../model'
 import { norm } from '../text'
 
@@ -94,7 +95,7 @@ export function clavesHE(hoja: HojaHorasExtra): string[] {
 export const claveLocal = (id: string) => `app:${id}`
 
 export function describirHE(f: FilaHorasExtra): string {
-  const cuando = [f.fecha || 'sin fecha', f.mes && `(${f.mes})`].filter(Boolean).join(' ')
+  const cuando = [textoFechaHE(f) || 'sin fecha', f.mes && `(${f.mes})`].filter(Boolean).join(' ')
   return [cuando, f.detalle || 'sin detalle', fmtHoras(f.horas), f.recargo ? `${f.recargo}%` : ''].filter(Boolean).join(' · ')
 }
 
