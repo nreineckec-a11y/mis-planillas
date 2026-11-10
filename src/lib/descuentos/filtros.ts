@@ -130,3 +130,34 @@ export function resolverFotos(datos: DatosDescuentos): Descuento[] {
   const r = (u: string | null) => (u?.startsWith('img:') ? (imgs[u.slice(4)] ?? null) : u)
   return datos.items.map((d) => (d.foto?.startsWith('img:') || d.miniatura?.startsWith('img:') ? { ...d, foto: r(d.foto), miniatura: r(d.miniatura) } : d))
 }
+
+// ---------- Varios días ----------
+
+export interface DescuentoEnDias {
+  d: Descuento
+  /** Fechas elegidas en que aplica, en orden. */
+  fechas: Ymd[]
+}
+
+/** Mismo beneficio aunque venga en una fila por día: comercio, tarjeta, %, monto, tope y condiciones. */
+const claveOferta = (d: Descuento) => [norm(d.comercio), d.tarjeta, d.pct, d.montoFijo, d.tope, norm(d.condiciones)].join('|')
+
+/** Descuentos de varias fechas, sin repetir el mismo beneficio: cada uno indica en qué fechas aplica. */
+export function descuentosDeDias(items: Descuento[], fechas: Ymd[], f: Filtros): { aplican: DescuentoEnDias[]; revisar: Descuento[] } {
+  const porOferta = new Map<string, DescuentoEnDias>()
+  const revisar = new Map<number, Descuento>()
+  for (const fecha of fechas) {
+    const r = descuentosDelDia(items, fecha, f)
+    for (const d of r.aplican) {
+      const k = claveOferta(d)
+      const e = porOferta.get(k)
+      if (!e) porOferta.set(k, { d, fechas: [fecha] })
+      else if (!e.fechas.some((x) => x.y === fecha.y && x.m === fecha.m && x.d === fecha.d)) e.fechas.push(fecha)
+    }
+    for (const d of r.revisar) revisar.set(d.id, d)
+  }
+  return {
+    aplican: [...porOferta.values()].sort((a, b) => compararDescuentos(a.d, b.d)),
+    revisar: [...revisar.values()].sort(compararDescuentos),
+  }
+}

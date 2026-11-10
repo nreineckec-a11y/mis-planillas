@@ -57,6 +57,10 @@ Estos cambios se guardan en el teléfono **aparte del Excel**, así que no se pi
 - Un cambio de estado se considera anotado si la fila del Excel ya tiene ese estado.
 - Si editaste la fila en el Excel y la app ya no la encuentra, te avisa para que revises y deshagas el cambio.
 
+## Descuentos: uno, varios o todos los días
+
+En **Por día**, los chips de día se pueden combinar: toca uno o varios (por ejemplo lunes y martes), o usa **Hoy** / **Toda la semana**. Con varios días, el mismo beneficio aparece una sola vez (aunque el Excel lo tenga en una fila por día) y cada tarjeta indica en cuáles de los días elegidos aplica.
+
 ## Descuentos: categorías, subcategorías y sector
 
 Bajo el buscador hay chips de **categoría** (🍽️ Restaurantes, 🛵 Delivery, 👕 Ropa…); al tocar una aparecen sus **subcategorías** (🍕 Pizzería, 🍣 Sushi y nikkei, 👟 Calzado…). Solo se muestran las que tienen descuento ese día, con su cantidad. En **Filtros** también están Categoría, Tipo / subcategoría y **Sector**. El buscador encuentra por comercio, comuna, sector o subcategoría ("pizza", "oriente").

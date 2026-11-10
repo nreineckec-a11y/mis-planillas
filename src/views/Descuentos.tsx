@@ -3,7 +3,7 @@ import { Card, Chip, Colapsable, Etiqueta, Header, Segmented, Sheet, Vacio, colo
 import { addDays, DIAS, MESES, today, weekday, type Ymd } from '../lib/dates'
 import { clp, pct } from '../lib/format'
 import type { Descuento } from '../lib/model'
-import { comerciosQueCalzan, descuentosDelDia, resolverFotos, tablaComercio, valoresUnicos, zonasPorDefecto, type Filtros } from '../lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDeDias, resolverFotos, tablaComercio, valoresUnicos, zonasPorDefecto, type Filtros } from '../lib/descuentos/filtros'
 import { norm } from '../lib/text'
 import { conEmoji, conEmojiCategoria, emojiCategoria, emojiTipo } from '../lib/descuentos/emoji'
 import { useMostrarFotos } from '../lib/prefs'
@@ -110,18 +110,28 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
   useEffect(() => prefGuardar('filtros', guardados), [guardados])
 
   const [texto, setTexto] = useState('')
-  const [offset, setOffset] = useState(0)
+  // Días elegidos (0 = hoy … 6), uno o varios.
+  const [offsets, setOffsets] = useState<number[]>([0])
   const [abrirFiltros, setAbrirFiltros] = useState(false)
-  const fecha = addDays(hoy, offset)
-  const { aplican, revisar } = descuentosDelDia(items, fecha, { ...filtros, texto })
+  const fechas = offsets.map((o) => addDays(hoy, o))
+  const varios = offsets.length > 1
+  const { aplican, revisar } = descuentosDeDias(items, fechas, { ...filtros, texto })
+  const toggleDia = (o: number) => {
+    const s = offsets.includes(o) ? offsets.filter((x) => x !== o) : [...offsets, o].sort((a, b) => a - b)
+    // Siempre queda al menos un día elegido.
+    setOffsets(s.length ? s : offsets)
+  }
+  const etiquetaDias = (fs: Ymd[]) =>
+    varios && fs.length === fechas.length ? 'Todos los días elegidos' : fs.map((f) => `${DIAS[weekday(f)].slice(0, 3).toLowerCase()} ${f.d}`).join(' · ')
   // Chips rápidos: categorías y, al elegir una, sus subcategorías; solo las que tienen descuento ese día.
   const contar = (ds: Descuento[], key: 'categoriaGrupo' | 'tipo', valores: string[], elegidos: string[]) => {
     const n = new Map<string, number>()
     for (const d of ds) if (d[key]) n.set(d[key], (n.get(d[key]) ?? 0) + 1)
     return valores.filter((v) => n.has(v) || elegidos.includes(v)).map((v) => ({ valor: v, n: n.get(v) ?? 0 }))
   }
-  const catsDelDia = contar(descuentosDelDia(items, fecha, { ...filtros, categorias: [], tipos: [], texto }).aplican, 'categoriaGrupo', opciones.categorias, filtros.categorias)
-  const tiposDelDia = contar(descuentosDelDia(items, fecha, { ...filtros, tipos: [], texto }).aplican, 'tipo', opciones.tipos, filtros.tipos)
+  const unicos = (f: Filtros) => descuentosDeDias(items, fechas, f).aplican.map((x) => x.d)
+  const catsDelDia = contar(unicos({ ...filtros, categorias: [], tipos: [], texto }), 'categoriaGrupo', opciones.categorias, filtros.categorias)
+  const tiposDelDia = contar(unicos({ ...filtros, tipos: [], texto }), 'tipo', opciones.tipos, filtros.tipos)
   const mostrarTipos = filtros.categorias.length > 0 || filtros.tipos.length > 0
   // Tocar una categoría la deja como única elegida (o la quita) y limpia las subcategorías.
   const elegirCategoria = (c: string) =>
@@ -153,22 +163,41 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
           <button
             key={d.wd}
             type="button"
-            onClick={() => setOffset(d.off)}
-            aria-pressed={d.off === offset}
+            onClick={() => toggleDia(d.off)}
+            aria-pressed={offsets.includes(d.off)}
             aria-label={`${DIAS[d.wd]} ${d.fecha.d}`}
             className={cx(
               'flex min-h-14 flex-col items-center justify-center rounded-xl text-sm font-semibold',
-              d.off === offset ? 'bg-teal-700 text-white dark:bg-teal-600' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+              offsets.includes(d.off) ? 'bg-teal-700 text-white dark:bg-teal-600' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
             )}
           >
             <span>{d.letra}</span>
-            <span className={cx('text-xs font-normal', d.off === offset ? 'text-teal-50' : 'text-slate-500 dark:text-slate-400')}>{d.fecha.d}</span>
+            <span className={cx('text-xs font-normal', offsets.includes(d.off) ? 'text-teal-50' : 'text-slate-500 dark:text-slate-400')}>{d.fecha.d}</span>
           </button>
         ))}
       </div>
-      <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-        {offset === 0 ? 'Hoy, ' : ''}
-        {DIAS[weekday(fecha)].toLowerCase()} {fecha.d} de {MESES[fecha.m - 1]}
+      <div className="mt-2 flex gap-2">
+        <Chip active={!varios && offsets[0] === 0} onClick={() => setOffsets([0])} className="min-h-10 px-3">
+          Hoy
+        </Chip>
+        <Chip active={offsets.length === 7} onClick={() => setOffsets([0, 1, 2, 3, 4, 5, 6])} className="min-h-10 px-3">
+          Toda la semana
+        </Chip>
+      </div>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+        {varios ? (
+          <>
+            {offsets.length === 7
+              ? `Toda la semana: ${fechas[0].d} de ${MESES[fechas[0].m - 1]} al ${fechas[6].d} de ${MESES[fechas[6].m - 1]}`
+              : `${offsets.length} días: ${listaDias(fechas)}`}
+            {' · toca los días para elegir'}
+          </>
+        ) : (
+          <>
+            {offsets[0] === 0 ? 'Hoy, ' : ''}
+            {DIAS[weekday(fechas[0])].toLowerCase()} {fechas[0].d} de {MESES[fechas[0].m - 1]} · toca otros días para sumarlos
+          </>
+        )}
       </p>
 
       <div className="mt-2 flex gap-2">
@@ -216,8 +245,8 @@ function Hoy({ items, hoy, onDetalle }: { items: Descuento[]; hoy: Ymd; onDetall
         {aplican.length === 1 ? '1 descuento' : `${aplican.length} descuentos`}
       </p>
       <div className="space-y-2">
-        {aplican.map((d) => (
-          <TarjetaDescuento key={d.id} d={d} onClick={() => onDetalle(d)} />
+        {aplican.map(({ d, fechas: fs }) => (
+          <TarjetaDescuento key={d.id} d={d} dias={varios ? etiquetaDias(fs) : undefined} onClick={() => onDetalle(d)} />
         ))}
         {aplican.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No hay descuentos con estos filtros.</p>}
       </div>
@@ -362,7 +391,13 @@ function FotoGrande({ d }: { d: DatosFoto }) {
   )
 }
 
-function TarjetaDescuento({ d, onClick }: { d: Descuento; onClick: () => void }) {
+/** "mar 6, mié 7 y vie 9". */
+function listaDias(fs: Ymd[]): string {
+  const t = fs.map((f) => `${DIAS[weekday(f)].slice(0, 3).toLowerCase()} ${f.d}`)
+  return t.length > 1 ? `${t.slice(0, -1).join(', ')} y ${t[t.length - 1]}` : t.join('')
+}
+
+function TarjetaDescuento({ d, dias, onClick }: { d: Descuento; dias?: string; onClick: () => void }) {
   return (
     <Card onClick={onClick} className="p-3">
       <div className="flex items-start gap-3">
@@ -387,6 +422,7 @@ function TarjetaDescuento({ d, onClick }: { d: Descuento; onClick: () => void })
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{textoTope(d)}</div>
           {d.dia === 'especificas' && d.fechaEspecifica && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">📅 {d.fechaEspecifica}</div>}
+          {dias && <div className="mt-1 text-xs font-semibold text-teal-700 dark:text-teal-400">📆 {dias}</div>}
         </div>
         <div className="shrink-0 text-right">
           <div className="text-2xl font-bold tabular-nums text-teal-700 dark:text-teal-400">{valorDescuento(d)}</div>

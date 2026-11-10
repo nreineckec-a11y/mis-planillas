@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { esAmarillo, grupoCategoria, parsePeriodo, parseDescuentos, urlFoto } from '../src/lib/descuentos/parse'
 import { parseFechasEspecificas } from '../src/lib/descuentos/fechas'
-import { comerciosQueCalzan, descuentosDelDia, FILTROS_VACIOS, resolverFotos, tablaComercio, valoresUnicos, zonasPorDefecto } from '../src/lib/descuentos/filtros'
+import { comerciosQueCalzan, descuentosDeDias, descuentosDelDia, FILTROS_VACIOS, resolverFotos, tablaComercio, valoresUnicos, zonasPorDefecto } from '../src/lib/descuentos/filtros'
 import { libro } from './helpers'
 
 const { datos, advertencias } = parseDescuentos(libro('descuentos.xlsx'), 2026)
@@ -194,5 +194,34 @@ describe('fotos incrustadas en el Excel', () => {
     expect(resueltos.find((d) => d.comercio === 'Café Ñandú')!.foto).toMatch(/^data:image\/png;base64,iVBOR/)
     // Las demás filas no cambian.
     expect(resueltos.find((d) => d.comercio === 'Restorán Uno')!.foto).toBe('https://fotos.test/restoran.png')
+  })
+})
+
+describe('varios días a la vez', () => {
+  const lun = { y: 2026, m: 10, d: 12 }
+  const mar = { y: 2026, m: 10, d: 13 }
+
+  it('junta los días sin repetir y dice en cuáles aplica cada descuento', () => {
+    const r = descuentosDeDias(datos.items, [lun, mar], FILTROS_VACIOS)
+    const dias = Object.fromEntries(r.aplican.map((x) => [`${x.d.comercio}|${x.d.tarjeta}`, x.fechas.map((f) => f.d)]))
+    expect(dias['Farmacia Ávila|Banco Gamma']).toEqual([12, 13]) // todos los días: una sola tarjeta
+    expect(dias['Restorán Uno|Banco Alfa']).toEqual([12])
+    expect(dias['Café Ñandú|Banco Beta']).toEqual([13])
+    expect(dias['Sushi Test|Banco Beta']).toEqual([13]) // fecha específica
+    expect(r.aplican.map((x) => x.d.pct)).toEqual([...r.aplican.map((x) => x.d.pct)].sort((a, b) => (b ?? -1) - (a ?? -1)))
+    expect(r.revisar.map((d) => d.comercio)).toEqual(['Hotel Imaginario'])
+  })
+
+  it('une el mismo beneficio aunque venga en una fila por día', () => {
+    const base = porComercio('Café Ñandú')
+    const items = [base, { ...base, id: 999, dia: 0 as const }]
+    const r = descuentosDeDias(items, [lun, mar], FILTROS_VACIOS)
+    expect(r.aplican).toHaveLength(1)
+    expect(r.aplican[0].fechas.map((f) => f.d)).toEqual([12, 13])
+  })
+
+  it('un solo día equivale a descuentosDelDia', () => {
+    const uno = descuentosDeDias(datos.items, [mar], FILTROS_VACIOS).aplican.map((x) => x.d.id)
+    expect(uno).toEqual(descuentosDelDia(datos.items, mar, FILTROS_VACIOS).aplican.map((d) => d.id))
   })
 })
