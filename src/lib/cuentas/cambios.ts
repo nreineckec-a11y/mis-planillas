@@ -6,6 +6,7 @@ import { clp, horas as fmtHoras } from '../format'
 import { textoFechaHE } from './calc'
 import type { DatosCuentas, EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaCompensatorias, HojaHorasExtra } from '../model'
 import { norm } from '../text'
+import { reconciliarPersonal, type CambiosPersonal } from './cambiosPersonal'
 
 export interface TurnoHELocal {
   id: string
@@ -43,13 +44,14 @@ export interface MarcaEstado {
   descripcion: string
 }
 
-export interface CambiosTrabajo {
+/** Todos los cambios hechos en la app sobre el Excel de cuentas (Trabajo y Personas). */
+export interface CambiosTrabajo extends CambiosPersonal {
   he: TurnoHELocal[]
   comp: TurnoCompLocal[]
   marcas: MarcaEstado[]
 }
 
-export const SIN_CAMBIOS: CambiosTrabajo = { he: [], comp: [], marcas: [] }
+export const SIN_CAMBIOS: CambiosTrabajo = { he: [], comp: [], marcas: [], cobros: [], pagos: [], personas: [] }
 
 export function nuevoId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
@@ -206,7 +208,9 @@ function mismoTurnoHE(f: FilaHorasExtra, t: TurnoHELocal): boolean {
   return numeros(f.fecha).includes(t.fecha.d)
 }
 
-export function reconciliar(datos: DatosCuentas, c: CambiosTrabajo): { cambios: CambiosTrabajo; notas: string[] } {
+export function reconciliar(datos: DatosCuentas, guardados: CambiosTrabajo): { cambios: CambiosTrabajo; notas: string[] } {
+  // Cambios guardados por versiones anteriores pueden no traer todos los campos.
+  const c: CambiosTrabajo = { ...SIN_CAMBIOS, ...guardados }
   const notas: string[] = []
 
   const he = c.he.filter((t) => {
@@ -252,7 +256,8 @@ export function reconciliar(datos: DatosCuentas, c: CambiosTrabajo): { cambios: 
     )
   const pendientes = he.length + comp.length + marcas.length
   if (pendientes) notas.push(plural(pendientes, 'Queda 1 cambio de la app por pasar al Excel.', 'Quedan # cambios de la app por pasar al Excel.'))
-  return { cambios: { he, comp, marcas }, notas }
+  const personal = reconciliarPersonal(datos.personal, { ...c, he, comp, marcas })
+  return { cambios: personal.cambios, notas: [...notas, ...personal.notas] }
 }
 
 /** ¿La marca encuentra su fila en el Excel actual? */

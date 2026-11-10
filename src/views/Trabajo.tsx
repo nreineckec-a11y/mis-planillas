@@ -175,7 +175,7 @@ function PanelCambios() {
         className="mx-4 mt-3 flex min-h-12 w-[calc(100%-2rem)] items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-left text-sm text-violet-900 dark:border-violet-900 dark:bg-violet-950/60 dark:text-violet-100"
       >
         <span>
-          <b>{n === 1 ? '1 cambio' : `${n} cambios`} hechos en la app</b> aún no están en el Excel
+          <b>{n === 1 ? '1 cambio hecho' : `${n} cambios hechos`} en la app</b> {n === 1 ? 'aún no está' : 'aún no están'} en el Excel
           {huerfanas > 0 && <span className="block text-xs text-amber-700 dark:text-amber-400">⚠︎ {huerfanas} no encuentran su fila en el Excel</span>}
         </span>
         <span aria-hidden>›</span>
@@ -214,7 +214,7 @@ function PanelCambios() {
                 type="button"
                 className="min-h-12 w-full rounded-xl bg-rose-600 font-semibold text-white"
                 onClick={async () => {
-                  await actualizarCambios(() => ({ he: [], comp: [], marcas: [] }))
+                  await actualizarCambios((c) => ({ ...c, he: [], comp: [], marcas: [] }))
                   setConfirmar(false)
                   setAbierto(false)
                 }}

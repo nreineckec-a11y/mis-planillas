@@ -1,7 +1,7 @@
 import { compareYmd, fromExcelSerial, isValidYmd, MESES, toDayNumber, type Ymd } from '../dates'
 import { norm } from '../text'
 import { clp } from '../format'
-import type { DatosPersonal, EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaHorasExtra, ItemPersonal, Parametros } from '../model'
+import type { EstadoHE, FilaCompensatoria, FilaHorasExtra, HojaHorasExtra, ItemPersonal, Parametros } from '../model'
 
 // ---------- Personal ----------
 
@@ -11,24 +11,24 @@ export function neto(i: ItemPersonal): number {
   return 0
 }
 
-export interface ResumenPersona {
+export interface ResumenPersona<I extends ItemPersonal = ItemPersonal> {
   persona: string
   netoPendiente: number
   netoPagado: number
-  pendientes: ItemPersonal[]
-  pagados: ItemPersonal[]
+  pendientes: I[]
+  pagados: I[]
 }
 
-export interface ResumenPersonal {
+export interface ResumenPersonal<I extends ItemPersonal = ItemPersonal> {
   meDebenPendiente: number
   yoDeboPendiente: number
   netoPendiente: number
   netoPagado: number
-  personas: ResumenPersona[]
+  personas: ResumenPersona<I>[]
 }
 
-export function resumenPersonal(datos: DatosPersonal): ResumenPersonal {
-  const porPersona = new Map<string, ResumenPersona>()
+export function resumenPersonal<I extends ItemPersonal>(datos: { items: I[]; personas: string[] }): ResumenPersonal<I> {
+  const porPersona = new Map<string, ResumenPersona<I>>()
   for (const p of datos.personas) porPersona.set(p, { persona: p, netoPendiente: 0, netoPagado: 0, pendientes: [], pagados: [] })
   let meDeben = 0
   let yoDebo = 0

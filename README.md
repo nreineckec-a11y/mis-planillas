@@ -28,6 +28,17 @@ Después de la primera carga funciona sin conexión.
 
 Ajustes → **Cargar Excel** → elige uno o ambos archivos. La app detecta el tipo por las hojas y encabezados (no por el nombre del archivo) y muestra cuántas filas importó y las advertencias (filas incompletas, valores no reconocidos).
 
+## Personas: marcar pagos y agregar cobros desde la app
+
+En **Personas**, al tocar a alguien:
+
+- Toca ☐ en los cobros que ya te pagaron (o que pagaste) → **Marcar como pagado**. También hay "Marcar todo como pagado", y en "Ya pagados" puedes volver uno a pendiente.
+- **+ Agregar cobro a …** para sumar un cobro nuevo a esa persona.
+
+En la lista, **+ Nuevo cobro** (si escribes un nombre que no existe, se crea la persona) y **+ Persona** para agregar a alguien sin cobros.
+
+Igual que en Trabajo, estos cambios quedan en el teléfono aparte del Excel, sobreviven a cargar uno nuevo, se descartan solos cuando el Excel ya los incluye, y el aviso morado permite copiar un resumen para anotarlos en `Personal - Detalle`.
+
 ## Trabajo: agregar turnos y marcar pagos desde la app
 
 En **Trabajo → Horas extra** puedes:
@@ -62,6 +73,10 @@ Dos formas de traer fotos en la hoja `Por día`:
 
 1. **Recomendada: foto incrustada.** Insertar la imagen en la celda de la columna **`Foto`** de su fila (Insertar → Imagen, o `ws.add_image()` con openpyxl, anclada a esa celda). La app la lee del archivo: funciona sin conexión y no pide nada a ningún sitio. Si la misma foto se repite en varias filas, se guarda una sola vez. Conviene reducirlas a ~360 px de ancho (≈25 KB cada una).
 2. **Enlace `https://`** en la columna `Foto` (texto, hipervínculo o `=IMAGEN("https://…")`), y opcionalmente una versión liviana en `Miniatura`. Ojo: muchos sitios de bancos protegen sus imágenes contra robots y en el iPhone no cargan desde otra app; por eso la opción 1 es la confiable. Las fotos por enlace que sí cargan quedan guardadas para verlas sin conexión (el sitio ve que se pidió la imagen, no los datos del Excel).
+
+## Apariencia
+
+Ajustes → Apariencia: **Automático** (sigue al teléfono), **Claro** u **Oscuro**.
 
 ## Correr en local
 
