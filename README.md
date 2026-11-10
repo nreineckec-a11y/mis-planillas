@@ -71,6 +71,8 @@ La app muestra una miniatura en cada descuento y la foto grande en el detalle y 
 
 Dos formas de traer fotos en la hoja `Por día`:
 
+Para incrustarlas a partir de enlaces: `python3 scripts/incrustar-fotos.py Descuentos.xlsx` (requiere `pip install openpyxl pillow`). Descarga cada foto de la columna `Foto` de «Por día», la reduce a 360 px y la inserta en su celda; las que no puede descargar conservan el enlace. En Claude Code basta con subir el Excel y pedir "incrusta las fotos de este Excel".
+
 1. **Recomendada: foto incrustada.** Insertar la imagen en la celda de la columna **`Foto`** de su fila (Insertar → Imagen, o `ws.add_image()` con openpyxl, anclada a esa celda). La app la lee del archivo: funciona sin conexión y no pide nada a ningún sitio. Si la misma foto se repite en varias filas, se guarda una sola vez. Conviene reducirlas a ~360 px de ancho (≈25 KB cada una).
 2. **Enlace `https://`** en la columna `Foto` (texto, hipervínculo o `=IMAGEN("https://…")`), y opcionalmente una versión liviana en `Miniatura`. Ojo: muchos sitios de bancos protegen sus imágenes contra robots y en el iPhone no cargan desde otra app; por eso la opción 1 es la confiable. Las fotos por enlace que sí cargan quedan guardadas para verlas sin conexión (el sitio ve que se pidió la imagen, no los datos del Excel).
 
