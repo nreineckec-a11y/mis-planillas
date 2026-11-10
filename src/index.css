@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Modo oscuro por clase en <html> (automático, claro u oscuro según Ajustes). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light dark;
   -webkit-tap-highlight-color: transparent;
@@ -14,12 +17,10 @@ body {
   overscroll-behavior-y: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html,
-  body {
-    background: #020617;
-    color: #e2e8f0;
-  }
+html.dark,
+html.dark body {
+  background: #020617;
+  color: #e2e8f0;
 }
 
 input[type='search']::-webkit-search-cancel-button {

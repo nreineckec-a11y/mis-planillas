@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { BotonCargar, Card, Colapsable, Header } from '../components/ui'
+import { BotonCargar, Card, Colapsable, Header, Segmented } from '../components/ui'
 import { fechaHora } from '../lib/format'
 import { resumenAdvertencias } from '../lib/importar'
 import type { Advertencia, Registro, Tipo } from '../lib/model'
-import { useMostrarFotos } from '../lib/prefs'
+import { useMostrarFotos, useTema } from '../lib/prefs'
 import { useDatos } from '../state'
 
 const NOMBRE: Record<Tipo, string> = { cuentas: 'Cuentas por cobrar', descuentos: 'Descuentos' }
@@ -77,6 +77,7 @@ function Bloque({ tipo, r, obsoleto }: { tipo: Tipo; r?: Registro; obsoleto: boo
 export default function Ajustes() {
   const { cuentas, descuentos, obsoletos, persistido } = useDatos()
   const [fotos, setFotos] = useMostrarFotos()
+  const [tema, setTema] = useTema()
   return (
     <>
       <Header titulo="Ajustes" />
@@ -93,6 +94,20 @@ export default function Ajustes() {
         </Card>
         <Bloque tipo="descuentos" r={descuentos} obsoleto={obsoletos.includes('descuentos')} />
         <Bloque tipo="cuentas" r={cuentas} obsoleto={obsoletos.includes('cuentas')} />
+
+        <Card className="mt-3 text-sm">
+          <h2 className="font-semibold">Apariencia</h2>
+          <Segmented
+            value={tema}
+            onChange={setTema}
+            options={[
+              { value: 'auto', label: 'Automático' },
+              { value: 'claro', label: '☀️ Claro' },
+              { value: 'oscuro', label: '🌙 Oscuro' },
+            ]}
+          />
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Automático sigue el modo claro u oscuro del teléfono.</p>
+        </Card>
 
         <Card className="mt-3 text-sm">
           <h2 className="font-semibold">Privacidad</h2>

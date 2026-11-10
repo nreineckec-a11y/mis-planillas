@@ -145,6 +145,16 @@ try {
     await shot('10-compensatorias')
     await page.getByRole('button', { name: /Ajustes/ }).click()
     await shot('11-ajustes')
+    // Tema elegido a mano, distinto al del teléfono.
+    const contrario = esquema === 'light' ? '🌙 Oscuro' : '☀️ Claro'
+    await page.getByRole('button', { name: contrario }).click()
+    const oscuro = await page.evaluate(() => document.documentElement.classList.contains('dark'))
+    if (oscuro !== (esquema === 'light')) errores.push(`el tema ${contrario} no se aplicó`)
+    await page.reload()
+    if ((await page.evaluate(() => document.documentElement.classList.contains('dark'))) !== oscuro) errores.push('el tema no se recordó al recargar')
+    await shot('20-tema-contrario')
+    await page.getByRole('button', { name: 'Automático' }).click()
+    if ((await page.evaluate(() => document.documentElement.classList.contains('dark'))) !== (esquema === 'dark')) errores.push('Automático no volvió al tema del teléfono')
 
     if (esquema === 'light') {
       // Persistencia y modo avión: recargar sin red debe mostrar los datos.
